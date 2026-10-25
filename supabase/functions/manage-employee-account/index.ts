@@ -40,7 +40,9 @@ Deno.serve(async (req) => {
   }
   const action = body.action as string;
   const salonId = body.salonId as string | undefined;
-  if (action !== 'create' && action !== 'reset_password') return fail('Unknown action', 400);
+  if (!['create', 'reset_password', 'revoke_session'].includes(action)) {
+    return fail('Unknown action', 400);
+  }
   if (!salonId) return fail('Salon is required', 400);
 
   const authHeader = req.headers.get('Authorization') ?? '';
@@ -165,6 +167,41 @@ Deno.serve(async (req) => {
     if (updateError) return fail(String(updateError.message));
     await audit('salon_members', member.id, 'RESET_PASSWORD');
     return respond({ ok: true, temporaryPassword });
+  }
+
+  if (action === 'revoke_session') {
+    // Suspends a revoked staff login immediately: kills every refresh token
+    // the member holds, not just the row visibility (RLS remains the
+    // backstop for access, this removes open browsing sessions).
+    const userId = body.userId as string | undefined;
+    if (!userId) return fail('User is required', 400);
+    const { data: member, error: memberError } = await admin
+      .from('salon_members')
+      .select('id,role,active')
+      .eq('salon_id', salonId)
+      .eq('user_id', userId)
+      .single();
+    if (memberError || !member) return fail('Member not found', 404);
+    if (member.role === 'owner') return fail('Platform involvement is required to revoke an owner');
+    let sessionsRevoked = false;
+    let revocationDetail = '';
+    try {
+      const revocation = await fetch(`${url}/auth/v1/admin/logout?scope=global`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${serviceKey}`,
+          apikey: serviceKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
+      sessionsRevoked = revocation.ok;
+      if (!revocation.ok) revocationDetail = (await revocation.text()).slice(0, 200);
+    } catch (e) {
+      revocationDetail = String(e).slice(0, 200);
+    }
+    await audit('salon_members', member.id, 'REVOKE_SESSION');
+    return respond({ ok: true, sessionsRevoked, revocationDetail });
   }
 
   return fail('Unknown action', 400);

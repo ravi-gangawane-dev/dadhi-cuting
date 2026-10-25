@@ -51,7 +51,7 @@ Date: 25 October 2026. Scope: the working tree as of this session (migrations `2
 ## 7. Pre-existing items accepted from the initial audit
 
 - R7 `email_for_mobile` enumeration surface (narrow, password-still-required) — unchanged, documented.
-- R10 session revocation on suspension — token-level `auth.admin.signOut` remains a **recommended operator action** inside the `set_member` path of `platform-admin-ops` / future enhancement; data access is already dead via RLS.
+- R10 session revocation on suspension — **now wired**: owner `revoke_session` action in `manage-employee-account` and deactivation-triggered revocation in `platform-admin-ops` `set_member` both call the GoTrue admin REST endpoint (`/auth/v1/admin/logout?scope=global`) with the service role; results are best-effort (`sessionsRevoked` flag) with RLS remaining the authoritative backstop. Live smoke: anon → 401, non-owner → 403.
 
 ## 8. Verdict
 

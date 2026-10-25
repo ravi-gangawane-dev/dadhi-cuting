@@ -164,8 +164,26 @@ Deno.serve(async (req) => {
       })
       .eq('id', member.id);
     if (updateError) return fail(String(updateError.message));
+    // A centrally suspended member must lose their open sessions as well.
+    let sessionsRevoked = false;
+    if (active === false) {
+      try {
+        const revocation = await fetch(`${url}/auth/v1/admin/logout?scope=global`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            apikey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId }),
+        });
+        sessionsRevoked = revocation.ok;
+      } catch {
+        /* RLS containment already applies; revocation is belt-and-braces */
+      }
+    }
     await platformAudit('SET_MEMBER', 'salon_members', member.id, { active, role });
-    return respond({ ok: true });
+    return respond({ ok: true, sessionsRevoked });
   }
 
   return fail('Unknown action', 400);

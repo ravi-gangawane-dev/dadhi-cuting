@@ -42,7 +42,7 @@ Date: 25 October 2026. Lists every defect found during this implementation cycle
 | ID | Description | Severity | Status |
 |---|---|---|---|
 | OPEN-01 | Fixture is synthetic: live-project validation of `feature_state`, employee login provisioning, MFA remains blocked on operator deploy steps (see `PRODUCTION_READINESS.md`). | Blocker (project-level, not code) | Tracked |
-| OPEN-02 | Session-token revocation on suspension (`auth.admin.signOut`) not yet wired into the `set_member` Edge path; RLS already cuts data access. | Low | Recommended enhancement |
+| OPEN-02 | Session-token revocation on suspension — **FIXED this session**: `manage-employee-account` gained an owner-verified `revoke_session` action (GoTrue admin REST `POST /auth/v1/admin/logout?scope=global`, body `{userId}`), `platform-admin-ops` `set_member` revokes on deactivation, and the Owner UI chains revocation after suspending. Both functions redeployed; live smoke: anon invoke → 401, non-owner admin → 403 "Not authorized". Best-effort with `sessionsRevoked` flag; RLS remains the authoritative backstop. | Low | **Closed** |
 | OPEN-03 | Temporary-password change enforcement is UI-driven (`must_change_password` metadata); Supabase has no native force-change. | Low | Documented; owner reset path + minimum-password config mitigate |
 | OPEN-04 | Initial bundle budget warning (see BUG-04). | Cosmetic | Backlog |
 

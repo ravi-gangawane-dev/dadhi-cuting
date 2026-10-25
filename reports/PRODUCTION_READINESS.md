@@ -51,7 +51,7 @@ The test Super Admin (`super-admin.test@dadhi-testing.test`) and its one-time te
 
 ## 5. Known limitations (non-blocking)
 
-1. Token-level revocation for suspended users is not yet `auth.admin.signOut`-wired (RLS containment covers data; see `SUPABASE_SECURITY_REPORT.md` §7).
+1. ~~Token-level revocation for suspended users~~ — **resolved**: owner `revoke_session` + platform `set_member` deactivation now revoke GoTrue sessions globally (best-effort; RLS containment remains the backstop).
 2. Force-change of temporary staff passwords is UX-enforced, not native (documented).
 3. Initial-bundle budget warning (595 kB vs 500 kB) — cosmetic, pre-existing trend.
 

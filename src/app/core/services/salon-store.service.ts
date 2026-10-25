@@ -529,13 +529,27 @@ export class SalonStoreService {
   }
   /** Suspends/restores the row in `salon_members` — audited, server-side. */
   async setMemberActive(userId: string, active: boolean) {
-    return this.mutation(async () => {
+    const result = await this.mutation(async () => {
       await this.data.rpc('set_member_active', {
         p_salon: this.salon().id,
         p_user: userId,
         p_active: active,
       });
+      return null;
     });
+    // A suspended member must also lose their open sessions; RLS already
+    // contained data access, this removes the live browsing session too.
+    // Best effort only: the suspension itself has already succeeded.
+    if (!active) {
+      try {
+        await this.data.client.functions.invoke('manage-employee-account', {
+          body: { action: 'revoke_session', salonId: this.salon().id, userId },
+        });
+      } catch {
+        /* revocation detail surfaces in the audit log, not as a UI error */
+      }
+    }
+    return result;
   }
   async setMemberRole(userId: string, role: 'manager' | 'receptionist' | 'employee' | 'accountant') {
     return this.mutation(async () => {

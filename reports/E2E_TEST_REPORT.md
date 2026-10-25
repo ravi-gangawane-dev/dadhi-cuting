@@ -74,6 +74,9 @@ Layout: 19 screens × 7 viewports (320, 360, 390, 430, 768, 1024, 1440) — no o
 | `feature_flags` registry as the admin | **14 seeded rows** (9 enabled + 5 planned, platform-unavailable) |
 | MFA enroll (TOTP, via the app's own supabase-js path) | **OK** — factor created with QR/secret |
 | MFA challenge + TOTP verify | **OK — assurance upgraded to `aal2`**; verdict returns `true` under the AAL2 session, so `platformGuard` reaches the `allowed` state |
+| Functions redeployed after session-revocation work (OPEN-02) | **Both ACTIVE** — `manage-employee-account` gains owner-verified `revoke_session`; `platform-admin-ops` `set_member` revokes on deactivation |
+| REVOCATION SMOKE anon invoke of `revoke_session` | **401 "Sign in required"** — platform JWT gate intact |
+| REVOCATION SMOKE non-owner admin `revoke_session` | **403 "Not authorized"** — action refused outside owner context |
 
 ## 5. Explicitly NOT executed (and why)
 
