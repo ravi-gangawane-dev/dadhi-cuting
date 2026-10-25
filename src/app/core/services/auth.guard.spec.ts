@@ -7,14 +7,31 @@ import {
 } from '@angular/router';
 import { authGuard } from './auth.guard';
 import { SalonStoreService } from './salon-store.service';
+import { PlatformAuthService } from './platform-auth.service';
+
+const platformStub = {
+  session: () => null,
+  refresh: async () => {},
+  isAdmin: () => false,
+  accessState: () => 'not-admin' as const,
+};
+
 describe('Authentication and role guard', () => {
-  const run = (store: unknown, roles?: string[], data: Record<string, unknown> = {}) => {
+  const run = (
+    store: unknown,
+    roles?: string[],
+    extra: { route?: Record<string, unknown>; platform?: Record<string, unknown> } = {},
+  ) => {
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: SalonStoreService, useValue: store }],
+      providers: [
+        provideRouter([]),
+        { provide: SalonStoreService, useValue: store },
+        { provide: PlatformAuthService, useValue: { ...platformStub, ...(extra.platform ?? {}) } },
+      ],
     });
     return TestBed.runInInjectionContext(() =>
       authGuard(
-        { data: { roles, ...data } } as unknown as ActivatedRouteSnapshot,
+        { data: { roles, ...(extra.route ?? {}) } } as unknown as ActivatedRouteSnapshot,
         {} as RouterStateSnapshot,
       ),
     );
@@ -35,6 +52,7 @@ describe('Authentication and role guard', () => {
       {
         ensureLoaded: async () => {},
         needsOnboarding: () => false,
+        accountSuspended: () => false,
         currentUser: () => ({ role: 'receptionist' }),
       },
       ['owner', 'manager'],
@@ -47,6 +65,7 @@ describe('Authentication and role guard', () => {
         {
           ensureLoaded: async () => {},
           needsOnboarding: () => false,
+          accountSuspended: () => false,
           currentUser: () => ({ role: 'owner' }),
         },
         ['owner'],
@@ -56,20 +75,34 @@ describe('Authentication and role guard', () => {
     const result = await run({
       ensureLoaded: async () => {},
       needsOnboarding: () => true,
+      accountSuspended: () => false,
       currentUser: () => ({ role: '' }),
     });
     expect(TestBed.inject(Router).serializeUrl(result as never)).toBe('/onboarding');
   });
-  it('keeps a signed-in owner without a salon on the onboarding route', async () => {
+  it('sends a suspended account to the account-locked screen', async () => {
+    const result = await run({
+      ensureLoaded: async () => {},
+      needsOnboarding: () => false,
+      accountSuspended: () => true,
+      currentUser: () => ({ role: 'employee' }),
+    });
+    expect(TestBed.inject(Router).serializeUrl(result as never)).toBe('/account-locked');
+  });
+  it('routes a confirmed platform administrator into the portal', async () => {
     const result = await run(
       {
         ensureLoaded: async () => {},
         needsOnboarding: () => true,
+        accountSuspended: () => false,
         currentUser: () => ({ role: '' }),
       },
       undefined,
-      { onboarding: true },
+      {
+        route: {},
+        platform: { isAdmin: () => true, accessState: () => 'mfa-needed' },
+      },
     );
-    expect(result).toBe(true);
+    expect(TestBed.inject(Router).serializeUrl(result as never)).toBe('/platform-admin/mfa');
   });
 });

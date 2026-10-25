@@ -33,6 +33,7 @@ import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
 import { businessDate } from './business-date';
 import { TranslationService } from './translation.service';
+import { FeatureAccessService } from './feature-access.service';
 
 const emptySummary: ReportSummary = {
   revenue: 0,
@@ -50,6 +51,7 @@ export class SalonStoreService {
   readonly auth = inject(AuthService);
   private readonly data = inject(SalonDataService);
   private readonly toast = inject(ToastService);
+  readonly flags = inject(FeatureAccessService);
   private readonly translation = inject(TranslationService);
   private readonly clock = signal(new Date());
   readonly salon = signal<Salon>({ ...emptySalon });
@@ -70,6 +72,8 @@ export class SalonStoreService {
   readonly saving = signal(false);
   readonly error = signal('');
   readonly needsOnboarding = signal(false);
+  /** The signed-in account exists but every membership is inactive. */
+  readonly accountSuspended = signal(false);
   readonly profilePhone = signal('');
   readonly isLoggedIn = this.auth.loggedIn;
   readonly currentUser = signal({ name: '', initials: '', role: '' });
@@ -128,6 +132,7 @@ export class SalonStoreService {
     this.loadedUser = '';
     this.loadPromise = null;
     this.needsOnboarding.set(false);
+    this.accountSuspended.set(false);
     this.profilePhone.set('');
     this.salon.set({ ...emptySalon });
     this.currentUser.set({ name: '', initials: '', role: '' });
@@ -156,14 +161,16 @@ export class SalonStoreService {
       this.loading.set(true);
       this.error.set('');
       try {
+        // All memberships, including inactive ones, so a suspended account is
+        // recognised instead of being pushed to salon onboarding.
         const { data: members, error } = await this.data.client
           .from('salon_members')
           .select('*')
           .eq('user_id', user.id)
-          .eq('active', true)
           .order('created_at');
         if (error) throw error;
-        if (!members?.length) {
+        const active = (members ?? []).filter((m) => m.active);
+        if (!active.length) {
           const { data: ownProfile, error: ownProfileError } = await this.data.client
             .from('user_profiles')
             .select('full_name,phone')
@@ -175,10 +182,11 @@ export class SalonStoreService {
           const ownName = ownProfile?.full_name || user.email || 'Account';
           this.currentUser.set({ name: ownName, initials: initials(ownName), role: '' });
           this.needsOnboarding.set(true);
+          this.accountSuspended.set((members ?? []).length > 0);
           this.loadedUser = user.id;
           return;
         }
-        const membership = members[0];
+        const membership = active[0];
         const { data: salon, error: salonError } = await this.data.client
           .from('salons')
           .select('*')
@@ -198,6 +206,20 @@ export class SalonStoreService {
         const name = profile?.full_name || user.email || 'Account';
         this.currentUser.set({ name, initials: initials(name), role: membership.role });
         await this.refresh();
+        // Backend-evaluated feature entitlements for this salon; a failure must
+        // not block the salon itself (guards re-check per navigation).
+        try {
+          await this.flags.ensureLoaded(this.salon().id);
+        } catch {
+          /* feature status stays empty; route guards fail closed */
+        }
+        try {
+          // Membership states drive the Owner's login management UI; other
+          // roles are only permitted by RLS to see their own row.
+          if (membership.role === 'owner') await this.loadMemberStatuses();
+        } catch {
+          /* status column renders 'no data' rather than blocking the page */
+        }
         if (generation === this.generation) this.loadedUser = user.id;
       } catch (e) {
         this.error.set(this.message(e));
@@ -463,6 +485,82 @@ export class SalonStoreService {
         ...(p.active !== undefined ? { active: p.active } : {}),
         ...(p.commissionRate !== undefined ? { commission_rate: p.commissionRate } : {}),
       }),
+    );
+  }
+  /**
+   * Server-side employee login provisioning (Edge Function, service role):
+   * creates the Auth account, links it to the staff record and adds an audited
+   * membership row. Returns the one-time temporary password for handover.
+   */
+  async createEmployeeAccount(p: {
+    employeeId: string;
+    email: string;
+    role: 'manager' | 'receptionist' | 'employee' | 'accountant';
+  }): Promise<{ temporaryPassword: string }> {
+    const { data, error } = await this.data.client.functions.invoke('manage-employee-account', {
+      body: {
+        action: 'create',
+        salonId: this.salon().id,
+        employeeId: p.employeeId,
+        email: p.email.trim(),
+        role: p.role,
+      },
+    });
+    if (error) throw error;
+    const result = data as { error?: string; temporaryPassword?: string };
+    if (result?.error) throw new Error(result.error);
+    if (!result?.temporaryPassword) throw new Error('Account service did not return credentials.');
+    return { temporaryPassword: result.temporaryPassword };
+  }
+  /** Owner-assisted password recovery: issues a new temporary password. */
+  async resetEmployeePassword(employeeUserId: string): Promise<{ temporaryPassword: string }> {
+    const { data, error } = await this.data.client.functions.invoke('manage-employee-account', {
+      body: {
+        action: 'reset_password',
+        salonId: this.salon().id,
+        userId: employeeUserId,
+      },
+    });
+    if (error) throw error;
+    const result = data as { error?: string; temporaryPassword?: string };
+    if (result?.error) throw new Error(result.error);
+    if (!result?.temporaryPassword) throw new Error('Account service did not return credentials.');
+    return { temporaryPassword: result.temporaryPassword };
+  }
+  /** Suspends/restores the row in `salon_members` — audited, server-side. */
+  async setMemberActive(userId: string, active: boolean) {
+    return this.mutation(async () => {
+      await this.data.rpc('set_member_active', {
+        p_salon: this.salon().id,
+        p_user: userId,
+        p_active: active,
+      });
+    });
+  }
+  async setMemberRole(userId: string, role: 'manager' | 'receptionist' | 'employee' | 'accountant') {
+    return this.mutation(async () => {
+      await this.data.rpc('set_member_role', {
+        p_salon: this.salon().id,
+        p_user: userId,
+        p_role: role,
+      });
+    });
+  }
+  /** Owner-visible membership states for the employee login management UI. */
+  readonly memberStatuses = signal<Map<string, { active: boolean; role: string }>>(new Map());
+  async loadMemberStatuses(): Promise<void> {
+    const { data, error } = await this.data.client
+      .from('salon_members')
+      .select('user_id,role,active')
+      .eq('salon_id', this.salon().id);
+    if (error) throw error;
+    this.memberStatuses.set(
+      new Map(
+        ((data ?? []) as { user_id: string; role: string; active: boolean }[]).map((m) => [
+          m.user_id,
+          { active: m.active, role: m.role },
+        ]),
+      ),
     );
   }
   async addCustomer(p: { name: string; phone: string; notes?: string }) {

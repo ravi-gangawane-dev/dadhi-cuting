@@ -96,6 +96,7 @@ export function mapEmployee(r: EmployeeRow, entries: ServiceEntry[], today: stri
     roleDisplayMarathi: r.designation.replaceAll('_', ' '),
     phone: r.phone,
     active: r.active,
+    userId: r.user_id,
     commissionRate: r.commission_rate,
     servicesToday: own.reduce((n, e) => n + e.services.reduce((s, i) => s + i.quantity, 0), 0),
     salesToday: own.reduce((s, e) => s + e.total, 0),

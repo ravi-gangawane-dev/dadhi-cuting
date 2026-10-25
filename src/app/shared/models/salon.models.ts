@@ -28,6 +28,8 @@ export interface Employee {
   roleDisplayMarathi: string;
   phone: string;
   active: boolean;
+  /** Auth account linked by the Owner through the server-side provisioning flow. */
+  userId: string | null;
   commissionRate: number; // e.g. 30 for 30%
   servicesToday: number;
   salesToday: number; // In Rupees

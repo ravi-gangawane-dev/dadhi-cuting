@@ -5,14 +5,18 @@
     [attr.aria-current]="isTabActive('/dashboard') ? 'page' : null"
     ><app-icon name="home" [size]="24" /><span>{{ i18n.t('home') }}</span></a
   >
-  <a routerLink="/catalog/services" [class.active]="isTabActive('/catalog/services')"
-    ><app-icon name="scissors" [size]="24" /><span>{{ i18n.t('services') }}</span></a
-  >
-  @if (store.canOperate()) {
+  @if (flags.flags()['services']?.available !== false) {
+    <a routerLink="/catalog/services" [class.active]="isTabActive('/catalog/services')"
+      ><app-icon name="scissors" [size]="24" /><span>{{ i18n.t('services') }}</span></a
+    >
+  }
+  @if (store.canOperate() && flags.flags()['services']?.available !== false) {
     <a routerLink="/services/new" class="dc-nav-add" aria-label="Add new service"
       ><span class="dc-add-circle"><app-icon name="plus" [size]="28" /></span
       ><span>{{ i18n.t('add') }}</span></a
     >
+  }
+  @if (store.canOperate() && flags.flags()['payments']?.available !== false) {
     <a routerLink="/payments" [class.active]="isTabActive('/payments')"
       ><app-icon name="wallet" [size]="24" /><span>{{ i18n.t('payments') }}</span></a
     >

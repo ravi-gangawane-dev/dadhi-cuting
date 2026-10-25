@@ -6,6 +6,7 @@ import { filter, map } from 'rxjs';
 import { IconComponent } from '../icon/icon.component';
 import { TranslationService } from '../../../core/services/translation.service';
 import { UiStateService } from '../../../core/services/ui-state.service';
+import { FeatureAccessService } from '../../../core/services/feature-access.service';
 
 @Component({
   selector: 'app-bottom-navigation',
@@ -19,6 +20,7 @@ export class BottomNavigationComponent {
   readonly store = inject(SalonStoreService);
   readonly i18n = inject(TranslationService);
   readonly uiState = inject(UiStateService);
+  readonly flags = inject(FeatureAccessService);
 
   readonly currentUrl = toSignal(
     this.router.events.pipe(

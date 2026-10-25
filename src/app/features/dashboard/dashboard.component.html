@@ -9,6 +9,13 @@
     ><app-icon name="bell"
   /></a>
 </header>
+@if (deniedFeatureLabel()) {
+  <div class="dc-content">
+    <p role="alert" class="dc-status dc-summary">
+      {{ deniedFeatureLabel() }} is not available for this salon. Ask the platform administrator if you need it.
+    </p>
+  </div>
+}
 <div class="dc-content">
   <div>
     <p class="dc-muted">Welcome back</p>

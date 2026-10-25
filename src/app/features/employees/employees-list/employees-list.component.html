@@ -26,7 +26,25 @@
       @if (store.canManage()) {
         <div class="dc-row justify-end">
           <button class="dc-text-button" (click)="editEmployee(emp.id)">Edit</button
-          ><button
+          >@if (store.currentUser().role === 'owner') {
+            @if (accountStatus(emp.userId) === 'none') {
+              <button class="dc-text-button" (click)="openLoginModal(emp.id)">Create login</button>
+            } @else {
+              <button class="dc-text-button" [disabled]="loginBusy()" (click)="resetPassword(emp.userId!)">
+                Reset password
+              </button>
+              @if (accountStatus(emp.userId) === 'active') {
+                <button class="dc-text-button" [disabled]="store.saving() || loginBusy()" (click)="suspendAccount(emp.userId!, true)">
+                  Suspend login
+                </button>
+              } @else {
+                <button class="dc-text-button" [disabled]="store.saving() || loginBusy()" (click)="suspendAccount(emp.userId!, false)">
+                  Restore login
+                </button>
+              }
+            }
+          }
+          <button
             class="dc-text-button"
             [disabled]="store.saving()"
             (click)="archive(emp.id, !emp.active)"
@@ -34,6 +52,15 @@
             {{ emp.active ? 'Archive' : 'Reactivate' }}
           </button>
         </div>
+        @if (store.currentUser().role === 'owner') {
+          <p class="dc-muted px-2 pb-1 text-[10px]">
+            Login status: @switch (accountStatus(emp.userId)) {
+              @case ('active') { active }
+              @case ('suspended') { suspended }
+              @case ('none') { no account yet }
+            }
+          </p>
+        }
       }
     </div>
   } @empty {
@@ -138,4 +165,76 @@
       {{ editId() ? 'Save changes' : 'Add to Salon Team' }}
     </button>
   </form>
+</app-custom-dialog>
+
+<!-- Create login modal -->
+<app-custom-dialog
+  [isOpen]="showLoginModal()"
+  title="Create employee login"
+  subtitle="The employee signs in with email and changes the temporary password at first login."
+  (closed)="showLoginModal.set(false)"
+>
+  <form (ngSubmit)="createLogin()" class="flex flex-col gap-3.5">
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase">Email for sign-in</label>
+      <input
+        type="email"
+        required
+        [ngModel]="loginEmail()"
+        (ngModelChange)="loginEmail.set($event)"
+        name="loginEmail"
+        placeholder="employee@example.com"
+        class="w-full h-[48px] px-3.5 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold"
+      />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase">App permission level</label>
+      <select
+        [ngModel]="loginMemberRole()"
+        (ngModelChange)="loginMemberRole.set($event)"
+        name="loginMemberRole"
+        class="w-full h-[48px] px-3 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold"
+      >
+        <option value="employee">Employee — own work only</option>
+        <option value="receptionist">Receptionist — customers, bookings, payments</option>
+        <option value="manager">Manager — owner-granted operations</option>
+        <option value="accountant">Accountant — authorized financial records</option>
+      </select>
+    </div>
+    @if (loginError()) {
+      <p role="alert" class="text-xs font-bold text-red-600">{{ loginError() }}</p>
+    }
+    <p class="text-[10px] text-[var(--color-text-secondary)]">
+      Provisioned server-side; the temporary password is shown once. Employees can never create
+      accounts themselves. Passwords are never stored in salon tables.
+    </p>
+    <button
+      type="submit"
+      [disabled]="loginBusy() || !loginEmail().includes('@')"
+      class="w-full h-[50px] bg-[var(--color-primary)] text-white text-sm font-bold rounded-xl disabled:opacity-50"
+    >
+      {{ loginBusy() ? 'Creating…' : 'Create login' }}
+    </button>
+  </form>
+</app-custom-dialog>
+
+<!-- One-time temporary password display -->
+<app-custom-dialog
+  [isOpen]="issuedPassword() !== ''"
+  title="Temporary password"
+  [subtitle]="'For ' + issuedName() + ' — visible only now, never again.'"
+  (closed)="closeIssued()"
+>
+  <div class="flex flex-col gap-3">
+    <p class="bg-black/5 rounded-xl px-4 py-3 text-center text-lg font-black tracking-widest select-all">
+      {{ issuedPassword() }}
+    </p>
+    <p class="text-[10px] text-[var(--color-text-secondary)]">
+      Share it through a secure channel. The employee must change it at first login. Existing
+      passwords can never be viewed or recovered.
+    </p>
+    <button type="button" class="dc-button mt-1" (click)="closeIssued()">
+      I have handed it over securely
+    </button>
+  </div>
 </app-custom-dialog>

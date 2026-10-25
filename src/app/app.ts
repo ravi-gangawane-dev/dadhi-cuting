@@ -38,7 +38,13 @@ export class App {
 
   readonly showBottomNav = computed(() => {
     const url = this.currentUrl() || '';
-    return this.store.isLoggedIn() && !url.includes('/auth/login') && !url.includes('/onboarding');
+    return (
+      this.store.isLoggedIn() &&
+      !url.includes('/auth/login') &&
+      !url.includes('/onboarding') &&
+      !url.includes('/platform-admin') &&
+      !url.includes('/account-locked')
+    );
   });
 
   constructor() {

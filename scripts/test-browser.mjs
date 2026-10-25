@@ -126,7 +126,42 @@ try {
       response = session;
     } else if (path.endsWith('/auth/v1/logout')) response = {};
     else if (path.endsWith('/auth/v1/user')) response = user;
-    else if (path.includes('/rpc/report_summary')) {
+    else if (path.includes('/rpc/is_platform_admin')) {
+      // Platform guard verdict: the fixture account is not an administrator.
+      response = false;
+    } else if (path.includes('/rpc/feature_state')) {
+      // Server-evaluated entitlements, mirroring the registry lifecycle rules:
+      // implemented + platform-available flags for this salon.
+      const flags = {
+        dashboard: true,
+        customers: true,
+        employees: true,
+        services: true,
+        payments: true,
+        expenses: true,
+        daily_closing: true,
+        reports: true,
+        appointments: true,
+        inventory: false,
+        whatsapp_notifications: false,
+        memberships: false,
+        loyalty: false,
+        multi_branch: false,
+      };
+      response = Object.fromEntries(
+        Object.entries(flags).map(([key, available]) => [
+          key,
+          {
+            label: key,
+            description: '',
+            lifecycle: available ? 'enabled' : 'planned',
+            platformEnabled: available,
+            available,
+            entitled: true,
+          },
+        ]),
+      );
+    } else if (path.includes('/rpc/report_summary')) {
       const entries = db.service_entries.filter(
         (e) => e.service_date >= body.p_from && e.service_date <= body.p_to,
       );

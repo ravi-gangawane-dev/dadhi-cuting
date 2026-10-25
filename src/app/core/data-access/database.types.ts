@@ -125,8 +125,38 @@ export interface NotificationRow extends Base {
 }
 export interface MemberRow extends Base {
   user_id: string;
-  role: 'owner' | 'manager' | 'receptionist' | 'employee';
+  role: 'owner' | 'manager' | 'receptionist' | 'employee' | 'accountant';
   active: boolean;
+}
+export interface UserAccountRow {
+  user_id: string;
+  granted_by: string | null;
+  granted_at: string;
+  note: string;
+}
+export interface PlatformAuditRow {
+  id: string;
+  actor_user_id: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  details: Json;
+  created_at: string;
+}
+export interface FeatureFlagRow {
+  key: string;
+  label: string;
+  description: string;
+  lifecycle: 'planned' | 'beta' | 'enabled' | 'disabled' | 'deprecated';
+  platform_enabled: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+export interface SalonFeatureOverrideRow {
+  salon_id: string;
+  flag_key: string;
+  enabled: boolean;
 }
 export type Tables = {
   salons: SalonRow;
@@ -157,6 +187,10 @@ export type Tables = {
     entity_type: string;
     entity_id: string;
   };
+  feature_flags: FeatureFlagRow;
+  salon_feature_overrides: SalonFeatureOverrideRow;
+  platform_admins: UserAccountRow;
+  platform_audit_logs: PlatformAuditRow;
 };
 export interface Database {
   public: {
@@ -174,6 +208,24 @@ export interface Database {
     Functions: {
       create_my_salon: { Args: { p_name: string }; Returns: string };
       email_for_mobile: { Args: { p_mobile: string }; Returns: string | null };
+      is_platform_admin: { Args: Record<string, never>; Returns: boolean };
+      set_member_active: {
+        Args: { p_salon: string; p_user: string; p_active: boolean };
+        Returns: string;
+      };
+      set_member_role: {
+        Args: { p_salon: string; p_user: string; p_role: string };
+        Returns: string;
+      };
+      feature_state: { Args: { p_salon: string }; Returns: Json };
+      platform_feature_set: {
+        Args: { p_key: string; p_platform_enabled: boolean | null; p_lifecycle: string | null };
+        Returns: undefined;
+      };
+      platform_salon_feature: {
+        Args: { p_salon: string; p_key: string; p_enabled: boolean | null };
+        Returns: undefined;
+      };
       void_service_entry: {
         Args: { p_salon: string; p_entry: string; p_reason: string };
         Returns: string;

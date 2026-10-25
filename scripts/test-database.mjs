@@ -401,6 +401,8 @@ await check('mobile sign-in resolves the account email for signed-out callers', 
   assert.equal(await scalar("select public.email_for_mobile('123')"), null);
   await db.exec("reset role;select set_config('request.jwt.claim.sub','',false);set role anon;");
   assert.equal(await scalar("select public.email_for_mobile('9876543210')"), email);
+  assert.equal(await scalar("select public.email_for_mobile('9999999999')"), null);
+  assert.equal(await scalar("select public.email_for_mobile('123')"), null);
 });
 await check('one mobile number belongs to one account', async () => {
   await db.exec("reset role;select set_config('request.jwt.claim.sub','',false);");
@@ -409,6 +411,176 @@ await check('one mobile number belongs to one account', async () => {
     /duplicate key|user_profiles_phone_key/i,
   );
 });
+
+/* ====== Platform RBAC + feature flags (migrations 202610250001-0002) ====== */
+const superAdmin = '10000000-0000-0000-0000-000000000006',
+  accountantUser = '10000000-0000-0000-0000-000000000007',
+  suspendedUser = '10000000-0000-0000-0000-000000000008';
+await db.exec(
+  `insert into auth.users(id) values('${superAdmin}'),('${accountantUser}'),('${suspendedUser}');
+   update auth.users set email=id::text||'@test.local' where id in ('${superAdmin}','${accountantUser}','${suspendedUser}');`,
+);
+await db.exec(
+  `insert into public.salon_members(salon_id,user_id,role) values('${salon}','${accountantUser}','accountant'),('${salon}','${suspendedUser}','receptionist');
+   update public.salon_members set active=false where user_id='${suspendedUser}';`,
+);
+await as(owner);
+await check('flag registry reports implemented and planned features', async () => {
+  const st = await scalar('select public.feature_state($1)', [salon]);
+  assert.equal(st.payments.available, true);
+  assert.equal(st.inventory.available, false);
+  assert.equal(st.multi_branch.lifecycle, 'planned');
+  assert.equal(await scalar('select count(*) from public.feature_flags'), 14);
+});
+await check('non platform-admin cannot set flags, overrides or read platform audit', async () => {
+  await denied('select public.platform_feature_set($1,$2,$3)', ['services', false, 'beta']);
+  await denied('select public.platform_salon_feature($1,$2,$3)', [salon, 'customers', false]);
+  // RLS hides, it does not error: an ordinary member gets an empty audit stream.
+  assert.equal(await scalar('select count(*) from public.platform_audit_logs'), 0);
+  await denied('select count(*) from public.salon_feature_overrides');
+});
+await as(suspendedUser);
+await check('suspended member sees nothing and cannot escape by onboarding', async () => {
+  assert.equal(await scalar('select count(*) from public.notifications'), 0);
+  assert.equal(await scalar('select count(*) from public.customers'), 0);
+  await denied('select public.create_my_salon($1)', ['Escape hatch']);
+  await denied('select public.set_member_active($1,$2,$3)', [salon, suspendedUser, true]);
+  await denied(
+    "insert into public.customers(salon_id,full_name) values($1,'Bad')",
+    [salon],
+  );
+});
+await as(accountantUser);
+await check('accountant reads financial records but cannot mutate anything', async () => {
+  assert.equal(await scalar('select count(*) from public.payments'), 3);
+  assert.equal(await scalar('select count(*) from public.service_entries'), 2);
+  assert.equal(await scalar('select count(*) from public.expenses'), 1);
+  assert.equal(
+    Number(await scalar("select public.report_summary($1,$2,$2)->>'revenue'", [salon, today])),
+    380,
+  );
+  await denied(
+    "insert into public.expenses(salon_id,amount,expense_date,description,payment_method) values($1,5,$2,'Bad','cash')",
+    [salon, today],
+  );
+  await denied('select public.void_service_entry($1,$2,$3)', [salon, entry, 'no rights']);
+  assert.equal(await scalar('select count(*) from public.platform_audit_logs'), 0);
+});
+await as(owner);
+await check('owner restores and suspends staff through the audited RPC', async () => {
+  await scalar('select public.set_member_active($1,$2,$3)', [salon, suspendedUser, true]);
+  assert.equal(
+    await scalar('select active from public.salon_members where user_id=$1', [suspendedUser]),
+    true,
+  );
+  await scalar('select public.set_member_active($1,$2,$3)', [salon, suspendedUser, false]);
+  assert.ok(
+    Number(
+      await scalar(
+        "select count(*) from public.audit_logs where action in ('SUSPEND_MEMBER','RESTORE_MEMBER')",
+      ),
+    ) >= 2,
+  );
+});
+await check('owner cannot suspend an owner membership or grant platform-ish roles', async () => {
+  await denied('select public.set_member_active($1,$2,$3)', [salon, owner, false]);
+  await denied('select public.set_member_role($1,$2,$3)', [salon, reception, 'owner']);
+  await denied('select public.set_member_active($1,$2,$3)', [salonB, owner, false]);
+});
+await check('owner re-roles staff inside the allowed set', async () => {
+  const mem = await scalar('select id from public.salon_members where user_id=$1', [reception]);
+  await scalar('select public.set_member_role($1,$2,$3)', [salon, reception, 'accountant']);
+  assert.equal(await scalar('select role from public.salon_members where id=$1', [mem]), 'accountant');
+  await scalar('select public.set_member_role($1,$2,$3)', [salon, reception, 'receptionist']);
+});
+await as(staff);
+await check('non-owner cannot manage memberships', async () => {
+  await denied('select public.set_member_active($1,$2,$3)', [salon, suspendedUser, true]);
+  await denied('select public.set_member_role($1,$2,$3)', [salon, suspendedUser, 'manager']);
+});
+await check('service-role bootstraps the platform admin list, browsers cannot', async () => {
+  await db.exec('reset role;');
+  await db.query("insert into public.platform_admins(user_id,note) values($1,'bootstrap')", [superAdmin]);
+});
+await as(superAdmin);
+await check('platform admin exists with cross-salon inspect rights and no owner powers', async () => {
+  assert.equal(await scalar('select private.is_platform_admin()'), true);
+  assert.equal(await scalar('select count(*) from public.salons'), 3); // A, B, self-serve onboarding
+  assert.ok((await scalar('select count(*) from public.user_profiles')) >= 3);
+  assert.ok(Number(await scalar('select count(*) from public.platform_audit_logs')) === 0);
+  await denied("insert into public.salon_members(salon_id,user_id,role) values($1,$2,'owner')", [salon, superAdmin]);
+  await denied('insert into public.platform_admins(user_id) values($1)', [other]);
+  await insight();
+});
+async function insight() {
+  await denied('select public.set_member_active($1,$2,$3)', [salon, suspendedUser, true]);
+}
+await as(superAdmin);
+await check('platform-admin self-onboarding is blocked', async () => {
+  await denied('select public.create_my_salon($1)', ['Admin salon']);
+});
+await check('platform admin manages registry lifecycle with audit', async () => {
+  await scalar('select public.platform_feature_set($1,$2,$3)', ['services', null, 'beta']);
+  const st = await scalar('select public.feature_state($1)', [salon]);
+  assert.equal(st.services.available, true);
+  assert.equal(st.services.lifecycle, 'beta');
+  assert.equal(
+    await scalar(
+      "select count(*) from public.platform_audit_logs where action='FEATURE_SET' and entity_id='services'",
+    ),
+    1,
+  );
+  await denied('select public.platform_feature_set($1,$2,$3)', ['nope', true, 'beta']);
+});
+await check('salon entitlement overrides cannot exceed platform availability', async () => {
+  await scalar('select public.platform_salon_feature($1,$2,$3)', [salon, 'inventory', true]);
+  const st = await scalar('select public.feature_state($1)', [salon]);
+  assert.equal(st.inventory.available, false);
+  await scalar('select public.platform_salon_feature($1,$2,$3)', [salon, 'inventory', null]);
+});
+await check('disabling a salon entitlement is enforced by policies and RPCs', async () => {
+  await scalar('select public.platform_salon_feature($1,$2,$3)', [salon, 'services', false]);
+});
+await as(owner);
+await check('owner observes (not controls) a disabled feature', async () => {
+  const st = await scalar('select public.feature_state($1)', [salon]);
+  assert.equal(st.services.available, false);
+  assert.equal(st.customers.available, true); // untouched flag keeps working
+  await denied(
+    'select public.create_service_entry($1,$2,$3,$4,0,$5,$6)',
+    [salon, employee, customer, JSON.stringify([{ service_id: service, quantity: 1 }]), '', crypto.randomUUID()],
+  );
+  await denied('select public.platform_salon_feature($1,$2,$3)', [salon, 'services', true]);
+});
+await as(other);
+const empB = await scalar("insert into public.employees(salon_id,full_name) values($1,'B staff') returning id", [salonB]);
+const custB = await scalar("insert into public.customers(salon_id,full_name) values($1,'B cust') returning id", [salonB]);
+const serviceB = await scalar("insert into public.services(salon_id,name,price,duration_minutes) values($1,'B trim',200,30) returning id", [salonB]);
+await as(superAdmin);
+await check('payments flag gates receipt recording; re-enabling restores it', async () => {
+  await scalar('select public.platform_salon_feature($1,$2,$3)', [salonB, 'payments', false]);
+  await scalar('select public.platform_salon_feature($1,$2,$3)', [salonB, 'services', null]);
+});
+await as(other);
+const gateEntry = await scalar('select public.create_service_entry($1,$2,$3,$4,0,$5,$6)', [
+  salonB, empB, custB, JSON.stringify([{ service_id: serviceB, quantity: 1 }]), 'gate', crypto.randomUUID(),
+]);
+await denied(pay, [salonB, gateEntry, JSON.stringify([{ method: 'cash', amount: 200 }]), 'blocked', crypto.randomUUID()]);
+await as(superAdmin);
+await scalar('select public.platform_salon_feature($1,$2,$3)', [salonB, 'payments', null]);
+await as(other);
+await scalar(pay, [salonB, gateEntry, JSON.stringify([{ method: 'cash', amount: 200 }]), 'after restore', crypto.randomUUID()]);
+await as(superAdmin);
+await check('platform audit records every privileged change', async () => {
+  const actions = await scalar(
+    "select count(*) from public.platform_audit_logs where action in ('FEATURE_SET','SALON_FEATURE')",
+  );
+  assert.ok(Number(actions) >= 5);
+});
+await as(owner);
+await check('lifecycle day-lock still governs closing after flag changes', () =>
+  denied('select public.close_business_day($1,$2,0,0)', [salon, today]));
+
 await db.close();
 console.log(
   `${passed} database integration checks passed (isolated PGlite PostgreSQL, mocked Auth/Storage schemas).`,
