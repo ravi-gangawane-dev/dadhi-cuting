@@ -26,7 +26,7 @@ Date: 25 October 2026. Scope: the working tree as of this session (migrations `2
 - **Owner membership management**: `set_member_active` / `set_member_role` assert owner-of-salon and forbid touching owner rows or granting out-of-range roles (harness-verified, including the negatives).
 - **Suspension**: inactive membership ⇒ empty RLS results across the board; `create_my_salon` cannot be reused as an escape hatch; account is visibly locked (`/account-locked`).
 
-## 4. Edge Functions (written; deploy pending)
+## 4. Edge Functions (deployed ACTIVE, verify_jwt enabled; live authenticated E2E pending)
 
 | Function | Threats addressed |
 |---|---|
@@ -55,4 +55,4 @@ Date: 25 October 2026. Scope: the working tree as of this session (migrations `2
 
 ## 8. Verdict
 
-Security posture is **production-ready in code**: no secret exposure, DB-enforced authorization with fail-closed feature gating, audited privileged paths, and MFA-gated platform administration. The remaining risk is operational: until migrations are pushed and Edge Functions deployed (operator steps), the enforcement points exist only in the migration files, not in the live database.
+Security posture is **production-ready**: no secret exposure, DB-enforced authorization with fail-closed feature gating, audited privileged paths, and MFA-gated platform administration. Migrations are applied and both Edge Functions are deployed ACTIVE; the enforced behaviours now exist in the live database. Residual operational items: bootstrap the admin identity, enroll MFA, and run the live verification pass (steps 4–6 of the readiness checklist).

@@ -2,16 +2,17 @@
 
 Date: 25 October 2026. Three suites were executed in this session; nothing in this document is projected or assumed. "Not Tested" items are listed explicitly in §4.
 
-## 1. Database integration harness — `npm run test:db` → **52/52 PASS**
+## 1. Database integration harness — `npm run test:db` → **53/53 PASS**
 
 Offline PostgreSQL (PGlite) with every migration applied in order and mocked `auth`/`storage` schemas. No production data touched.
 
 Pre-existing coverage (34 checks): idempotency keys for financial RPCs, day-lock, cash math/difference, timezone-aware report windows, cross-salon isolation, employee read scoping, NaN/discount guards, mobile uniqueness, notification triggers, audit logging, void flows with reason, etc.
 
-New coverage added for this project (18 checks):
+New coverage added for this project (19 checks):
 
 | Check | Verifies |
 |---|---|
+| admin verdict RPC lives in the public schema for the browser | `public.is_platform_admin()` wrapper: admin → true, staff → false, anon denied (added after BUG-05) |
 | owner restores and suspends staff through the audited RPC | `set_member_active` happy path + audit row |
 | owner cannot suspend an owner membership or grant platform-ish roles | `set_member_active`/`set_member_role` negative paths |
 | owner re-roles staff inside the allowed set | role whitelist (manager/receptionist/employee/accountant) |
@@ -59,18 +60,25 @@ Playwright (`msedge`, headless) against `dist/DadhiCuting/browser` served at `12
 
 Layout: 19 screens × 7 viewports (320, 360, 390, 430, 768, 1024, 1440) — no overflow, no broken images, content present, bottom-nav clearance — new admin surfaces included in the fixtures (`is_platform_admin` → false, `feature_state` → 14-key map). Screenshots: `reports/figma-screenshots/*.png`; machine results: `reports/figma-responsive-results.json`. Marathi-mode screenshot at 320px captured.
 
-## 4. Explicitly NOT executed (and why)
+## 4. Executed later in the same session (live, after operator approval)
+
+| Item | Result |
+|---|---|
+| `supabase db push` (migrations `202610250001`, `202610250002`, plus `202610250003` from BUG-05) | **Applied** — `supabase migration list` shows all 9 local/remote in sync |
+| `supabase functions deploy` (both functions) | **Deployed ACTIVE** with `verify_jwt: true` (version 1) |
+| Live REST probes (anon publishable key, read-only) | `is_platform_admin` → `42501` denied (exists, anon-locked); `feature_state` → `42501` denied; `set_member_active` → signature-resolution (exposed). Matches the designed lockdown |
+
+## 5. Explicitly NOT executed (and why)
 
 | Item | Reason |
 |---|---|
-| `supabase db push` of the two new migrations | Operator-required (live project `qtsvejbzvdizavoevnoi`) |
-| `supabase functions deploy` (both) | Operator-required |
 | `npm run bootstrap:admin` execution | Operator-only tool; interactive + service-role key |
-| Real MFA enrollment/AAL2 verification vs live Auth | Requires deployed migrations + real admin session |
-| Live E2E of employee login provisioning (create/reset password against hosted Auth) | Requires deployed Edge Functions |
+| Real MFA enrollment/AAL2 verification vs live Auth | Requires a real Super Admin session (bootstrap first) |
+| Live E2E of employee login provisioning (create/reset password against hosted Auth) | Requires an authenticated owner session in the live app |
+| Authenticated-user RPC probes (admin verdict `true`/`false` against real sessions) | No live account credentials are handled here |
 | Load/performance and browser matrix beyond bundled `msedge` | Out of scope for this project |
 | Redeploy/verification of Netlify hosting | Deployment pipeline untouched |
 
-## 5. Verdict
+## 6. Verdict
 
-All runnable suites are green: **52/52 DB, 59/59 unit, 15 browser checks, build OK**. The gap that remains between "verified offline" and "verified live" is exactly the operator action list in `PRODUCTION_READINESS.md`; no code change should be needed for it.
+All runnable suites are green: **53/53 DB, 59/59 unit, 15 browser checks, build OK**, and the live deploy steps (migrations + Edge Functions) were executed with operator approval and smoke-verified. The remaining "verified offline vs verified live" gap is the authenticated-session matrix (bootstrap, MFA, staff login), listed in §5.

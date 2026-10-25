@@ -61,9 +61,9 @@ Harness proof points: "disabling a salon entitlement is enforced by policies and
 | Database registry + overrides + state function | **Working** (harness) |
 | RPC enforcement in financial workflows | **Working** (harness) |
 | Policy enforcement on writer tables | **Working** (harness) |
-| Portal editors | **Working** (UI); live write path after migrations push — recommended verification |
+| Portal editors | **Working** (UI); **migrations are applied live**, so the live write path is now reachable — flagged as the recommended step-6 test |
 | Nav hiding & denial banner | **Working** (browser fixture) |
-| Live-project flag switch E2E | **Not Tested** — operator applies migrations first |
+| Live-project flag switch E2E | **Not Tested** — needs an authenticated Super Admin session (bootstrap + MFA first) |
 
 ## 6. Notes
 

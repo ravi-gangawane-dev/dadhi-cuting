@@ -2,35 +2,35 @@
 
 Date: 25 October 2026. Branch `main`, all changes uncommitted on top of `1a08313`.
 
-## Overall verdict: **Code-ready · Deployment BLOCKED on explicit operator approval**
+## Overall verdict: **Deployed — code-ready · final go-live steps remain (bootstrap + MFA + live verification)**
 
-The Super Admin system, ownership flows, employee account management, role/permission enforcement, and dynamic feature flags are implemented and fully verified offline (52/52 DB checks, 59/59 unit, 15 browser checks, build green). Nothing has been pushed to the hosted Supabase project: every live-environment operation requires the operator's credentials and explicit approval, and cannot be performed by the agent.
+The Super Admin system, ownership flows, employee account management, role/permission enforcement, and dynamic feature flags are implemented (**53/53** offline checks, 59/59 unit, 15 browser checks, build green) **and now applied to the live project**: both new migrations (plus the BUG-05 verdict-RPC fix) were pushed, and both Edge Functions are deployed ACTIVE. The remaining steps are interactive/credential-based and belong to the operator.
 
 ## 1. Go-live checklist (operator, in order)
 
-| # | Action | Command / location | Risk | Rollback |
-|---|---|---|---|---|
-| 1 | Commit the working tree | `git add -A && git commit` on `main` | none | — |
-| 2 | Apply the two new migrations | `supabase db push` or SQL editor: `202610250001_platform_rbac.sql`, `202610250002_feature_flags.sql` | Low — both additive; CHECK extension validated offline | Drop-safety: no destructive statements; feature RPC rewrites are `create or replace` |
-| 3 | Deploy Edge Functions | `supabase functions deploy manage-employee-account`; `supabase functions deploy platform-admin-ops` | Low — callers verified against DB before service-role use | Delete function (browser then surfaces a clean error) |
-| 4 | Provision the Super Admin | `npm run bootstrap:admin` (operator's own env credentials; interactive; audited) | Controlled: requires typed project-ref confirmation | Remove row from `platform_admins` (writes stay service-role even later) |
-| 5 | First login + MFA enrollment | Visit app, sign in, enroll TOTP at `/platform-admin/mfa` | none | — |
-| 6 | Verify the matrix live | Create a salon, a staff login, flip one flag per salon (expect denial), flip back | Low | Flag flip-back |
-| 7 | Netlify deploy of the new build | Existing pipeline (`netlify.toml` SPA rules already cover the new routes) | Low | Previous deploy |
+| # | Action | Command / location | Risk | Rollback | Status |
+|---|---|---|---|---|---|
+| 1 | Commit the working tree | `git add -A && git commit` on `main` | none | — | ✅ `10e503c` + `551eab1` |
+| 2 | Apply the new migrations | `supabase db push` | Low — additive, validated offline | None needed (no destructive statements) | ✅ **Applied** — 202610250001/002/003 all remote-synced |
+| 3 | Deploy Edge Functions | `supabase functions deploy manage-employee-account`; `supabase functions deploy platform-admin-ops` | Low | Delete function | ✅ **Deployed ACTIVE** (verify_jwt on) |
+| 4 | Provision the Super Admin | `npm run bootstrap:admin` (operator's own env credentials; interactive; audited) | Controlled: requires typed project-ref confirmation | Remove row from `platform_admins` | ⬜ **interactive step — cannot be run by the agent** |
+| 5 | First login + MFA enrollment | Visit app, sign in, enroll TOTP at `/platform-admin/mfa` | none | — | ⬜ |
+| 6 | Verify the matrix live | Create a salon, a staff login, flip one flag per salon (expect denial), flip back | Low | Flag flip-back | ⬜ |
+| 7 | Netlify deploy of the new build | Existing pipeline (`netlify.toml` SPA rules already cover the new routes) | Low | Previous deploy | ⬜ |
 
 ## 2. Feature readiness matrix
 
 | Capability | Code | Offline proof | Live proof |
 |---|---|---|---|
-| Platform admin identity + MFA gate | ✔ | ✔ (harness + unit) | Pending steps 4–5 |
-| Platform portal (dashboard/salons/salon detail/users/features/audit/settings) | ✔ | ✔ (UI/typed queries; unit) | Pending step 6 |
-| Super-Admin-only flag control (registry + salon overrides) | ✔ | ✔ (harness) | Pending step 6 |
-| Flag enforcement in policies + financial RPCs | ✔ | ✔ (harness) | Pending step 2 |
-| Owner membership management (suspend/restore/role) | ✔ | ✔ (harness) | Pending step 2 |
-| Employee login provisioning (create + temp password + first-login change, reset) | ✔ | Partially (types/flows; Edge not deployed) | Pending step 3 |
-| Accountant role (read-only financial) | ✔ | ✔ (harness) | Pending step 2 |
-| Suspension → `/account-locked` routing | ✔ | ✔ | Pending step 2 |
-| Salon onboarding hardening | ✔ | ✔ (harness) | Pending step 2 |
+| Platform admin identity + MFA gate | ✔ | ✔ (harness + unit) | Verdict RPC smoke-tested live (anon denied); AAL2 flow pending steps 4–5 |
+| Platform portal (dashboard/salons/salon detail/users/features/audit/settings) | ✔ | ✔ (UI/typed queries; unit) | Pending steps 4–6 |
+| Super-Admin-only flag control (registry + salon overrides) | ✔ | ✔ (harness) | RPC exposure verified; role flow pending step 6 |
+| Flag enforcement in policies + financial RPCs | ✔ | ✔ (harness) | Live (policies/RPCs applied by migration push) |
+| Owner membership management (suspend/restore/role) | ✔ | ✔ (harness) | Live (applied); owner-session test pending step 6 |
+| Employee login provisioning (create + temp password + first-login change, reset) | ✔ | Partially (types/flows; Edge not deployed) | **Deployed ACTIVE**; live E2E pending step 6 |
+| Accountant role (read-only financial) | ✔ | ✔ (harness) | Live (constraint + policies applied) |
+| Suspension → `/account-locked` routing | ✔ | ✔ | Live (applied) |
+| Salon onboarding hardening | ✔ | ✔ (harness) | Live (applied) |
 | Bootstrap tooling | ✔ | Syntax-verified only (by design) | Pending step 4 |
 
 ## 3. Operational notes
@@ -47,7 +47,7 @@ The Super Admin system, ownership flows, employee account management, role/permi
 2. Force-change of temporary staff passwords is UX-enforced, not native (documented).
 3. Initial-bundle budget warning (595 kB vs 500 kB) — cosmetic, pre-existing trend.
 
-## 5. What "done" will mean after step 6
+## 5. What "done" will mean after steps 4–6
 
 - Super Admin: ✔ provable live (portal + audit trail)
 - Employee accounts: ✔ provable live (login as a provisioned staff member, forced change, owner reset)

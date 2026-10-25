@@ -31,6 +31,12 @@ Date: 25 October 2026. Lists every defect found during this implementation cycle
 - Hardcoded HTML dashboard amounts — already resolved before this cycle (real `report_summary` bindings), re-verified.
 - Salon A's business-day-day-lock tests re-seeded to salon B for the payments-flag gate to avoid day-lock interference — test-isolation issue, not production.
 
+### BUG-05 — `is_platform_admin` verdict unreachable from the browser (found in Phase 10 live smoke test)
+- **Symptom**: After pushing Migration A to the live project, an anon REST probe returned `PGRST202 — could not find the function public.is_platform_admin` instead of a permission error.
+- **Root cause**: `is_platform_admin()` was created only in the **`private` schema**, which PostgREST does not expose, so the Angular call `client.rpc('is_platform_admin')` (→ `/rest/v1/rpc/is_platform_admin`) could never resolve against a real project. The offline harness missed it because it tests the *policies* invoking `private.is_platform_admin()` directly; `platformGuard` failed closed so nothing broke locally.
+- **Fix**: additive migration `supabase/migrations/202610250003_platform_admin_verdict_rpc.sql` re-exports the verdict as `public.is_platform_admin()` — a thin security-definer wrapper over the `private` helper, revoked from `public`/`anon`, granted to `authenticated`. Two new harness checks pin down public visibility, non-admin `false`, and anon denial.
+- **Result**: harness now **53/53**; live REST probe shows the function exists and anon is denied (`42501`) as designed.
+
 ## Open / none-blocking
 
 | ID | Description | Severity | Status |
@@ -42,4 +48,4 @@ Date: 25 October 2026. Lists every defect found during this implementation cycle
 
 ## Regression evidence
 
-After the last code change (BUG-01 fix), the full verification loop was re-run in this session: `npm run test:db` 52/52, `npm test` 59/59, `npm run build` (success + known warning), `npm run test:browser` 15/15 counted checks + visual sweep of 19 screens × 7 viewports with zero `pageerror`.
+After the last code change (BUG-01 fix), the full verification loop was re-run in this session, and again after BUG-05's fix: `npm run test:db` **53/53**, `npm test` 59/59, `npm run build` (success + known warning), `npm run test:browser` 15/15 counted checks + visual sweep of 19 screens × 7 viewports with zero `pageerror`; plus live REST probes confirming the deployed RPC exposure.

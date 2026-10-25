@@ -28,6 +28,8 @@ Live-project verification categories: `Working` = proven in this session · `Ver
 
 ## 2. Database functions (RPCs)
 
+Live note (25 Oct 2026): all three suites of DB functions are now **applied to the live project**; anon REST probes confirm correct lockdown (`is_platform_admin`/`feature_state` → `42501` for anon, correct named-arg signatures for the others). Rows below state the offline-verified contract.
+
 | Function | Purpose | Permissions | Enforcement | Status |
 |---|---|---|---|---|
 | `report_summary(p_salon,p_from,p_to)` | Dashboard/reports aggregates | authenticated | invoker-rights → RLS | Working |
@@ -71,9 +73,9 @@ Live-project verification categories: `Working` = proven in this session · `Ver
 
 | Category | Count | Status |
 |---|---|---|
-| REST tables integrated | 18 | 15 Working, 3 Verified offline (`platform_admins`, `platform_audit_logs` admin surfaces, `salon_feature_overrides` direct) |
-| RPCs | 15 | All Working (DB-path verified); live-project confirmation recommended after migrations push |
+| REST tables integrated | 18 | 15 Working, 3 Verified offline + live-applied (`platform_admins`, `platform_audit_logs` admin surfaces, `salon_feature_overrides` direct) |
+| RPCs | 15 | All Working; **migrations pushed live**; exposure smoke-tested via anon REST |
 | Auth API paths | 10 | 9 Working, MFA live flow Not Tested |
-| Edge Functions | 2 | Written; Not Tested live (deploy blocked on operator) |
+| Edge Functions | 2 | **Deployed ACTIVE**; live authenticated E2E pending (needs real owner/admin sessions) |
 
 No hardcoded business records, totals, emails, phone numbers, or user IDs exist in any integration path; the browser test uses a deterministic synthetic fixture and the DB harness uses generated UUIDs.

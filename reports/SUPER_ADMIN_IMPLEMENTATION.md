@@ -9,12 +9,12 @@ All ten phases of the agreed plan were executed: audit → database RBAC → boo
 | Phase | Deliverable | Status |
 |---|---|---|
 | 1 | Initial audit (`reports/SUPER_ADMIN_INITIAL_AUDIT.md`) | Working |
-| 2 | Operator bootstrap script (`scripts/bootstrap-super-admin.mjs`, `npm run bootstrap:admin`) | Working (syntax-verified; **never executed here**) |
-| 3 | Migration A `supabase/migrations/202610250001_platform_rbac.sql` | Working (validated offline; **unapplied to any live project**) |
+| 2 | Operator bootstrap script (`scripts/bootstrap-super-admin.mjs`, `npm run bootstrap:admin`) | Working (syntax-verified; **interactive step — still requires the operator's credentials**) |
+| 3 | Migration A `supabase/migrations/202610250001_platform_rbac.sql` | **Applied to the live project** |
 | 4 | Angular platform core: services + guards + routes | Working |
-| 5 | Super Admin portal `/platform-admin` (8 screens + MFA enroll) | Working (UI + typed real queries; live-project verification pending operator) |
-| 6 | Employee login provisioning (`manage-employee-account` Edge Function + Owner UI) | Partially Working (written and typed end-to-end; **not deployed**, so not testable against the live project) |
-| 7 | Feature-flag database + enforcement + UI | Working (validated offline; live verification pending) |
+| 5 | Super Admin portal `/platform-admin` (8 screens + MFA enroll) | Working (verdict RPC smoke-tested live; full portal flow needs the bootstrapped admin) |
+| 6 | Employee login provisioning (`manage-employee-account` Edge Function + Owner UI) | Partially Working (function **deployed ACTIVE**; live staff-login E2E needs an owner session) |
+| 7 | Feature-flag database + enforcement + UI | **Applied to the live project** (enforcement verified offline; flag-flip test recommended in step 6) |
 | 8 | Mock-data removal, suspension routing, budget/regression checks | Working |
 | 9 | Test evidence collection (this document's numbers) | Working |
 | 10 | Final reports (8 documents) | Working |
@@ -72,7 +72,7 @@ All ten phases of the agreed plan were executed: audit → database RBAC → boo
 
 | Suite | Command | Result |
 |---|---|---|
-| Database integration (offline PGlite, applies all migrations in dependency order) | `npm run test:db` | **52/52 checks PASS** — includes 18 new RBAC/flag/suspension checks (owner membership management, accountant reads, platform-admin inspect rights, blocked self-elevation + admin self-onboarding, registry lifecycle control, "override cannot exceed platform availability", flag-gated policies + RPCs, payments flag regression, platform audit trail, day-lock integrity) |
+| Database integration (offline PGlite, applies all migrations in dependency order) | `npm run test:db` | **53/53 checks PASS** — includes 19 new RBAC/flag/suspension checks (owner membership management, accountant reads, platform-admin inspect rights, blocked self-elevation + admin self-onboarding, registry lifecycle control, "override cannot exceed platform availability", flag-gated policies + RPCs, payments flag regression, platform audit trail, day-lock integrity, public-schema verdict RPC exposure) |
 | Unit (vitest, 42 files) | `npm test` | **59/59 PASS** |
 | Production build | `npm run build` | PASS; pre-existing WARNING only: initial bundle 595.04 kB vs 500 kB budget |
 | Browser regression (Playwright + deterministic API fixture, `msedge` headless) | `npm run test:browser` | **15 counted checks PASS**, plus "dialog keyboard navigation and Escape dismissal" and "logout returns to sign-in"; 19 screens layout-checked at 7 viewports (320→1440), screenshots in `reports/figma-screenshots/`, machine results in `reports/figma-responsive-results.json` |
@@ -83,25 +83,25 @@ One real defect was found and fixed during Phase 9 (see `reports/BUG_REPORT.md`)
 
 | Module | Status | Reason |
 |---|---|---|
-| Database RBAC (migrations) | **Working** | 52/52 offline checks pass; applies cleanly in order |
-| Feature flags (migrations) | **Working** | Same harness; enforcement verified for policies and the three financial RPCs |
+| Database RBAC (migrations) | **Working** | 53/53 offline checks pass; **migrations applied to the live project** |
+| Feature flags (migrations) | **Working** | Same harness; enforcement verified for policies and the three financial RPCs; **migrations applied to the live project** |
 | Angular platform core & guards | **Working** | Unit + browser suites green |
-| Super Admin portal UI | **Working** | Browser test confirms no broken renders; live data path untested (Blocker B1) |
-| Employee login provisioning | **Partially Working** | Code complete and typed; Edge Function **not deployed** (Blocker B2), so no live end-to-end proof |
+| Super Admin portal UI | **Working** | Browser test confirms no broken renders; full live flow pending bootstrapped admin + MFA |
+| Employee login provisioning | **Partially Working** | Code complete and typed; Edge Function **deployed ACTIVE**; live owner→staff login E2E pending |
 | MFA enforcement | **Working** (code) / **Not Tested** (live AAL flow) | AAL2 gate implemented; enrollment screen exists; needs a real session to observe TOTP |
 | Bootstrap script | **Working** / **Not Tested** | Syntax-checked only, by design (operator-only) |
 | Suspension & account-locked flow | **Working** | Harness: suspended members see nothing through RLS; UI routes to `/account-locked` (store test) |
 
-## 5. Operator-required operations — cannot be done by the agent
+## 5. Operator-required operations
 
-1. **Apply migrations** to the Supabase project (`qtsvejbzvdizavoevnoi`): `supabase db push` or SQL-editor execution of the two new migration files. Additive; no destructive statements in them.
-2. **Deploy Edge Functions**: `supabase functions deploy manage-employee-account` and `supabase functions deploy platform-admin-ops` (no extra secrets needed beyond the platform-provided `SUPABASE_SERVICE_ROLE_KEY`/`ANON_KEY`).
-3. **Run the bootstrap**: `npm run bootstrap:admin` with the operator's own credentials in the environment (never committed). 
+1. ~~Apply migrations~~ — **Done** (operator approved; `202610250001`, `202610250002`, and BUG-05 fix `202610250003` are remote-synced).
+2. ~~Deploy Edge Functions~~ — **Done** (`manage-employee-account`, `platform-admin-ops` deployed ACTIVE, `verify_jwt` on).
+3. **Run the bootstrap** (interactive; needs the operator's env credentials): `npm run bootstrap:admin` — cannot be run by the agent.
 4. **Enroll MFA** for the Super Admin at `/platform-admin/mfa` with a first login.
-5. Optional verification pass on the **live project** (salon creation, flag switching, employee login) after 1–4.
+5. Optional verification pass on the **live project** (salon creation, flag switching, employee login) after 3–4.
 
 ## 6. Honest limitations
 
-- Nothing in this working tree has been exercised against the hosted Supabase project; all database evidence comes from the offline PGlite harness and all UI evidence from the offline browser fixture.
-- `git status` shows all changes uncommitted on `main`; a commit should be made before pushing migrations so the working tree matches the database state.
+- Live REST probes used only the anon publishable key (read-only); no authenticated live session has been exercised — no real-user login, no live salon write, no MFA enrollment observed in this session.
+- All changes are committed (`10e503c`, `551eab1`); publish to the hosting pipeline is step 7 of the readiness checklist.
 - Password change enforcement relies on `must_change_password` user metadata surfaced in the UI; the temporary password is forced to be changed by the first-login UX, not by a Supabase-native force-change setting (none exists) — documented in `SUPABASE_SECURITY_REPORT.md`.
