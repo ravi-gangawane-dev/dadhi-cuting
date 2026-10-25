@@ -1,6 +1,6 @@
 # DadhiCutting — E2E / Integration Test Report
 
-Date: 25 October 2026. Three suites were executed in this session; nothing in this document is projected or assumed. "Not Tested" items are listed explicitly in §4.
+Date: 25 October 2026. Suites were executed in this session; nothing in this document is projected or assumed. "Not Tested" items are listed explicitly in §5.
 
 ## 1. Database integration harness — `npm run test:db` → **53/53 PASS**
 
@@ -87,4 +87,4 @@ Layout: 19 screens × 7 viewports (320, 360, 390, 430, 768, 1024, 1440) — no o
 
 ## 6. Verdict
 
-All runnable suites are green: **53/53 DB, 59/59 unit, 15 browser checks, build OK**, and the live deploy steps (migrations + Edge Functions) were executed with operator approval and smoke-verified. The remaining "verified offline vs verified live" gap is the authenticated-session matrix (bootstrap, MFA, staff login), listed in §5.
+All runnable suites are green: **53/53 DB, 59/59 unit, 15 browser checks, build OK**. The live project is deployed (migrations + Edge Functions ACTIVE) and the **platform control chain is verified live end to end** — bootstrapped test admin → login → verdict `true` → audit readable → 14 flags → TOTP enroll → AAL2 achieved. The remaining live-verification gap is the **salon-side matrix** (owner/employee sessions through the deployed Edge Functions and flag flips), listed in §5.
