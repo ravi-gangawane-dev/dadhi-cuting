@@ -1,0 +1,54 @@
+<app-header title="Employee Profile" [showBack]="true" backUrl="/employees" />
+<div class="dc-content">
+  @if (employee(); as emp) {
+    <section class="text-center">
+      <div class="dc-avatar dc-avatar-large">{{ emp.initials }}</div>
+      <h2 class="dc-page-title">{{ emp.name }}</h2>
+      <p class="dc-muted">{{ emp.roleDisplay }} · {{ emp.active ? 'Active' : 'Archived' }}</p>
+    </section>
+    <div class="grid grid-cols-3 gap-2">
+      <div class="dc-card text-center !px-2">
+        <strong>{{ emp.servicesToday }}</strong>
+        <p class="dc-muted">Services today</p>
+      </div>
+      <div class="dc-card text-center !px-2">
+        <strong>₹{{ emp.salesToday }}</strong>
+        <p class="dc-muted">Revenue today</p>
+      </div>
+      <div class="dc-card text-center !px-2">
+        <strong>{{ emp.commissionRate }}%</strong>
+        <p class="dc-muted">Commission</p>
+      </div>
+    </div>
+    <h2 class="dc-heading">Contact & details</h2>
+    <div class="dc-card dc-row">
+      <app-icon name="phone" />
+      <div>
+        <p class="dc-muted">Phone</p>
+        <strong>{{ emp.phone || 'Not recorded' }}</strong>
+      </div>
+    </div>
+    <div class="dc-card dc-row">
+      <app-icon name="calendar" />
+      <div>
+        <p class="dc-muted">Joined</p>
+        <strong>{{ emp.joinedDate || 'Not recorded' }}</strong>
+      </div>
+    </div>
+    <div class="dc-summary dc-row justify-between">
+      <span>Estimated commission today</span><strong>₹{{ estimatedCommission() }}</strong>
+    </div>
+    <h2 class="dc-heading">Recent services</h2>
+    @for (entry of employeeEntries(); track entry.id) {
+      <div class="dc-card dc-row justify-between">
+        <span>{{ entry.customerName }}</span
+        ><strong>₹{{ entry.total }}</strong>
+      </div>
+    } @empty {
+      <p class="dc-muted">No services recorded.</p>
+    }
+    <a routerLink="/employees" class="dc-button">Manage employee</a>
+  } @else {
+    <p class="dc-card dc-muted">Employee not found.</p>
+  }
+</div>

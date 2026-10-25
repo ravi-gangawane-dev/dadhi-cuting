@@ -1,0 +1,113 @@
+<app-header title="Customer List" [showBack]="true" backUrl="/dashboard" />
+<div class="dc-content">
+  <app-search-input
+    placeholder="Name or mobile number"
+    [value]="searchQuery()"
+    (valueChange)="search($event)"
+  />
+  @if (searching()) {
+    <p role="status" class="dc-muted">Searching…</p>
+  }
+  @for (cust of filteredCustomers(); track cust.id) {
+    <div class="dc-stack !gap-1">
+      <app-customer-card
+        [name]="cust.name"
+        [lastVisit]="cust.lastVisit"
+        [visitsCount]="cust.visitsCount"
+        [initials]="cust.initials"
+        (clicked)="goToProfile(cust.id)"
+      /><button class="dc-text-button self-end" (click)="editCustomer(cust)">Edit customer</button>
+    </div>
+  } @empty {
+    @if (!searching()) {
+      <app-empty-state
+        title="No customers found"
+        message="Add a customer to keep track of visits."
+        actionLabel="+ Add customer"
+        (actionClicked)="openAddModal()"
+      />
+    }
+  }
+  <div class="dc-row justify-between dc-muted">
+    <button [disabled]="page() === 0 || searching()" (click)="page.set(page() - 1)">Previous</button
+    ><span>{{ total() }} customers · Page {{ page() + 1 }}</span
+    ><button
+      [disabled]="(page() + 1) * 25 >= total() || searching()"
+      (click)="page.set(page() + 1)"
+    >
+      Next
+    </button>
+  </div>
+  <button class="dc-button" (click)="openAddModal()">+ Add Customer</button>
+</div>
+<!-- Add Customer Modal Dialog -->
+<app-custom-dialog
+  [isOpen]="showAddModal()"
+  [title]="editId() ? 'Edit Customer' : 'Add New Customer'"
+  subtitle="Create a new client record"
+  (closed)="showAddModal.set(false)"
+>
+  <form (ngSubmit)="saveCustomer()" class="flex flex-col gap-3.5">
+    <div class="flex flex-col gap-1">
+      <label
+        for="custName"
+        class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase"
+        >Customer Name</label
+      >
+      <input
+        id="custName"
+        type="text"
+        [ngModel]="newName()"
+        (ngModelChange)="newName.set($event)"
+        name="custName"
+        placeholder="e.g. Anand Kulkarni"
+        class="w-full h-[48px] px-3.5 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+        required
+      />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase"
+        >Mobile Number (Optional)</label
+      >
+      <div class="relative flex items-center">
+        <span class="absolute left-3.5 text-sm font-semibold text-[var(--color-text-secondary)]"
+          >+91</span
+        >
+        <input
+          type="tel"
+          [ngModel]="newPhone()"
+          (ngModelChange)="newPhone.set($event)"
+          name="custPhone"
+          placeholder="98765 43210"
+          class="w-full h-[48px] pl-12 pr-3.5 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+        />
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label
+        for="custNotes"
+        class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase"
+        >Preferences / Notes</label
+      >
+      <input
+        id="custNotes"
+        type="text"
+        [ngModel]="newNotes()"
+        (ngModelChange)="newNotes.set($event)"
+        name="custNotes"
+        placeholder="e.g. Prefers zero trim beard"
+        class="w-full h-[48px] px-3.5 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+      />
+    </div>
+
+    <button
+      type="submit"
+      [disabled]="!newName().trim() || store.saving()"
+      class="w-full h-[50px] bg-[var(--color-primary)] text-white text-sm font-bold rounded-xl active:scale-95 transition-transform mt-2 disabled:opacity-50"
+    >
+      Save Customer Record
+    </button>
+  </form>
+</app-custom-dialog>

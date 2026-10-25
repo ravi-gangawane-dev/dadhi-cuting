@@ -1,0 +1,47 @@
+@if (isOpen()) {
+  <div
+    class="backdrop-layer fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+    (click)="onBackdropClick($event)"
+  >
+    <div
+      class="w-full max-w-[420px] bg-white rounded-t-[24px] sm:rounded-[24px] max-h-[90vh] overflow-y-auto flex flex-col shadow-2xl animate-slide-up"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="title()"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (keydown.escape)="onClose()"
+    >
+      <!-- Dialog Header -->
+      <div
+        class="px-5 pt-5 pb-3 border-b border-[var(--color-border)] flex items-center justify-between sticky top-0 bg-white z-10"
+      >
+        <div>
+          <h3 class="text-lg font-bold text-[var(--color-text-primary)]">
+            {{ title() }}
+          </h3>
+          @if (subtitle()) {
+            <p class="text-xs text-[var(--color-text-secondary)] mt-0.5">
+              {{ subtitle() }}
+            </p>
+          }
+        </div>
+        <button
+          type="button"
+          (click)="onClose()"
+          class="w-8 h-8 rounded-full bg-[var(--color-background)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] flex items-center justify-center transition-colors"
+          aria-label="Close dialog"
+          cdkFocusInitial
+        >
+          <app-icon name="close" [size]="16" />
+        </button>
+      </div>
+
+      <!-- Dialog Body -->
+      <div class="p-5 flex-1">
+        <ng-content />
+      </div>
+    </div>
+  </div>
+}

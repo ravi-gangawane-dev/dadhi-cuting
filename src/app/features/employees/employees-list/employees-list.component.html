@@ -1,0 +1,141 @@
+<app-header title="Employee List" [showBack]="true" backUrl="/dashboard" />
+<div class="dc-content">
+  <input
+    class="dc-search"
+    aria-label="Search employees"
+    placeholder="Search employees"
+    [ngModel]="query()"
+    (ngModelChange)="query.set($event)"
+  /><label class="dc-muted"
+    ><input type="checkbox" [ngModel]="showArchived()" (ngModelChange)="showArchived.set($event)" />
+    Include archived employees</label
+  >
+  @for (emp of filteredEmployees(); track emp.id) {
+    <div class="dc-card">
+      <button class="dc-row w-full text-left" (click)="goToProfile(emp.id)">
+        <span class="dc-avatar">{{ emp.initials }}</span>
+        <div class="dc-grow">
+          <strong>{{ emp.name }}</strong>
+          <p class="dc-muted">{{ emp.roleDisplay }} · {{ emp.active ? 'Active' : 'Archived' }}</p>
+        </div>
+        <span class="text-right"
+          ><strong>{{ emp.servicesToday }}</strong
+          ><span class="dc-muted block">jobs today</span></span
+        >
+      </button>
+      @if (store.canManage()) {
+        <div class="dc-row justify-end">
+          <button class="dc-text-button" (click)="editEmployee(emp.id)">Edit</button
+          ><button
+            class="dc-text-button"
+            [disabled]="store.saving()"
+            (click)="archive(emp.id, !emp.active)"
+          >
+            {{ emp.active ? 'Archive' : 'Reactivate' }}
+          </button>
+        </div>
+      }
+    </div>
+  } @empty {
+    <p class="dc-card dc-muted">No employees found.</p>
+  }
+  @if (store.canManage()) {
+    <button class="dc-button" (click)="openAddModal()">+ Add Team Member</button>
+  }
+  <p class="dc-muted">
+    {{ totalTeamServices() }} services · ₹{{ totalTeamSales().toLocaleString('en-IN') }} earned
+    today
+  </p>
+</div>
+<!-- Add Employee Modal Dialog -->
+<app-custom-dialog
+  [isOpen]="showAddModal()"
+  [title]="editId() ? 'Edit Team Member' : 'Add Team Member'"
+  subtitle="Onboard a new barber or stylist"
+  (closed)="showAddModal.set(false)"
+>
+  <form (ngSubmit)="saveEmployee()" class="flex flex-col gap-3.5">
+    <div class="flex flex-col gap-1">
+      <label
+        for="empName"
+        class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase"
+        >Full Name</label
+      >
+      <input
+        id="empName"
+        type="text"
+        [ngModel]="newName()"
+        (ngModelChange)="newName.set($event)"
+        name="empName"
+        placeholder="e.g. Mahesh Shinde"
+        class="w-full h-[48px] px-3.5 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+        required
+      />
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div class="flex flex-col gap-1">
+        <label
+          for="empRole"
+          class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase"
+          >Role</label
+        >
+        <select
+          id="empRole"
+          [ngModel]="newRole()"
+          (ngModelChange)="newRole.set($event)"
+          name="empRole"
+          class="w-full h-[48px] px-3 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+        >
+          <option value="senior_barber">Senior barber</option>
+          <option value="barber">Barber</option>
+          <option value="stylist">Stylist</option>
+          <option value="manager">Manager</option>
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label
+          for="empComm"
+          class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase"
+          >Commission (%)</label
+        >
+        <input
+          id="empComm"
+          type="number"
+          [ngModel]="newCommission()"
+          (ngModelChange)="newCommission.set($event)"
+          name="empComm"
+          class="w-full h-[48px] px-3.5 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+          required
+        />
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label
+        for="empPhone"
+        class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase"
+        >Mobile Number</label
+      >
+      <input
+        id="empPhone"
+        type="tel"
+        [ngModel]="newPhone()"
+        (ngModelChange)="newPhone.set($event)"
+        name="empPhone"
+        placeholder="98220 12345"
+        class="w-full h-[48px] px-3.5 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+        required
+      />
+    </div>
+
+    <button
+      type="submit"
+      [disabled]="!newName().trim() || store.saving()"
+      class="w-full h-[50px] bg-[var(--color-primary)] text-white text-sm font-bold rounded-xl active:scale-95 transition-transform mt-2 disabled:opacity-50"
+    >
+      {{ editId() ? 'Save changes' : 'Add to Salon Team' }}
+    </button>
+  </form>
+</app-custom-dialog>

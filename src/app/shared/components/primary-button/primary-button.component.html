@@ -1,0 +1,12 @@
+<button
+  [type]="type()"
+  [disabled]="disabled() || loading()"
+  [attr.aria-busy]="loading()"
+  (click)="onClick($event)"
+  class="dc-button"
+  [class.dc-outline]="variant() === 'outline'"
+  [class.dc-danger]="color() === 'destructive'"
+  [class.w-full]="fullWidth()"
+>
+  {{ loading() ? 'Please wait…' : label() }}<ng-content />
+</button>

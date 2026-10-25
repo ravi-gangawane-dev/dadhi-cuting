@@ -1,0 +1,46 @@
+<app-header title="Notifications" [showBack]="true" backUrl="/dashboard" />
+<div class="dc-content">
+  <div class="dc-chips">
+    @for (type of ['all', 'unread', 'payment', 'pending', 'closing']; track type) {
+      <button
+        class="dc-chip capitalize"
+        [class.active]="filter() === type"
+        (click)="filter.set(type)"
+      >
+        {{ type }}
+      </button>
+    }
+  </div>
+  <div class="dc-row justify-between">
+    <p class="dc-muted">{{ unreadCount() }} unread</p>
+    <button
+      class="dc-text-button"
+      (click)="markAllRead()"
+      [disabled]="!unreadCount() || store.saving()"
+    >
+      Mark all read
+    </button>
+  </div>
+  @for (notif of visibleNotifications(); track notif.id) {
+    <button
+      class="dc-card dc-row text-left"
+      (click)="markRead(notif)"
+      [attr.aria-label]="notif.title + (notif.isRead ? ', read' : ', mark as read')"
+    >
+      <span class="dc-avatar"><app-icon [name]="getIconName(notif.type)" /></span>
+      <div class="dc-grow">
+        <strong>{{ notif.title }}</strong>
+        <p class="dc-muted">{{ notif.body }}</p>
+        <p class="dc-muted">{{ notif.time }}</p>
+      </div>
+      @if (!notif.isRead) {
+        <span class="text-[var(--color-primary)]" aria-label="Unread">●</span>
+      }
+    </button>
+  } @empty {
+    <div class="dc-card dc-stack items-center py-12">
+      <app-icon name="bell" [size]="40" />
+      <p class="dc-muted">No new notifications.</p>
+    </div>
+  }
+</div>

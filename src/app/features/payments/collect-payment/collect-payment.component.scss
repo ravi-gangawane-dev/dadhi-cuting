@@ -1,0 +1,99 @@
+:host {
+  display: block;
+}
+
+/* Theme variables -- color-primary variants defined in app.scss */
+:host {
+  --color-primary-border: #E7E9E3;
+  --color-primary-surface: #FFFFFF;
+  --color-primary-text: #1F2836;
+  --color-primary-muted: #66717A;
+  --color-primary-success: #07594D;
+  --color-primary-card: #FAF8F5;
+}
+
+/* Invoice Summary Card */
+:host .invoice-summary {
+  background: var(--color-primary-card);
+  border: 1px solid var(--color-primary-border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+/* Section Header */
+:host .section-header {
+  margin: 8px 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-primary-text);
+}
+
+/* Payment Method Buttons */
+:host .payment-method {
+  background: var(--color-primary-card);
+  border: 1px solid var(--color-primary-border);
+  border-radius: 12px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 16px;
+  transition: all 0.2s ease;
+}
+
+:host .payment-method.selected {
+  border-color: var(--color-primary-success);
+}
+
+:host .payment-method.selected .dot {
+  background: var(--color-primary-success);
+  color: #FFFFFF;
+}
+
+/* Dot indicator */
+:host .dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Input fields */
+:host input[type="number"] {
+  background: var(--color-primary-card);
+  border: 1px solid var(--color-primary-border);
+  border-radius: 8px;
+  height: 40px;
+  padding: 0 12px;
+  font-size: 0.875rem;
+  color: var(--color-primary-text);
+  width: 100%;
+}
+
+:host input[type="number"]:focus {
+  outline: none;
+  border-color: var(--color-primary-success);
+  box-shadow: 0 0 0 3px rgba(7, 89, 77, 0.1);
+}
+
+/* Confirm Button */
+:host .confirm-btn {
+  background: var(--color-primary-success);
+  color: #FFFFFF;
+  border-radius: 12px;
+  height: 52px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+:host .confirm-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 4px 12px rgba(7, 89, 77, 0.25);
+}

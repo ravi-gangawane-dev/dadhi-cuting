@@ -1,0 +1,54 @@
+<div
+  class="fixed top-4 left-0 right-0 z-50 flex flex-col items-center gap-2 px-4 pointer-events-none"
+>
+  @for (toast of toastService.toasts(); track toast.id) {
+    <div
+      class="w-full max-w-[390px] rounded-xl p-3.5 shadow-lg flex items-center justify-between gap-3 pointer-events-auto border animate-fade-in"
+      [class.bg-[var(--color-text-primary)]]="toast.type === 'success'"
+      [class.text-[#F6F1E7]]="toast.type === 'success'"
+      [class.border-[#268A65]/30]="toast.type === 'success'"
+      [class.bg-[#3A1D1C]]="toast.type === 'error'"
+      [class.text-white]="toast.type === 'error'"
+      [class.border-[#CC514C]/30]="toast.type === 'error'"
+      [class.bg-[#2A2318]]="toast.type === 'warning'"
+      [class.text-[#F0D4A1]]="toast.type === 'warning'"
+      [class.border-[#CB8C28]/30]="toast.type === 'warning'"
+      [class.bg-[#141719]]="toast.type === 'info'"
+      [class.text-white]="toast.type === 'info'"
+      [class.border-[var(--color-border)]/20]="toast.type === 'info'"
+    >
+      <div class="flex items-center gap-2.5 flex-1">
+        <div class="shrink-0">
+          @if (toast.type === 'success') {
+            <span class="text-[#268A65]">
+              <app-icon name="check" [size]="18" />
+            </span>
+          } @else if (toast.type === 'error') {
+            <span class="text-[#CC514C]">
+              <app-icon name="close" [size]="18" />
+            </span>
+          } @else {
+            <span class="text-[#F0D4A1]">
+              <app-icon name="scissors" [size]="18" />
+            </span>
+          }
+        </div>
+        <div class="flex flex-col">
+          @if (toast.title) {
+            <span class="text-xs font-bold leading-tight">{{ toast.title }}</span>
+          }
+          <span class="text-xs font-medium leading-tight opacity-90">{{ toast.message }}</span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        (click)="toastService.dismiss(toast.id)"
+        class="opacity-70 hover:opacity-100 p-1 shrink-0"
+        aria-label="Dismiss toast"
+      >
+        <app-icon name="close" [size]="14" />
+      </button>
+    </div>
+  }
+</div>

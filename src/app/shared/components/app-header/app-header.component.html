@@ -1,0 +1,23 @@
+<header class="dc-header">
+  @if (showBack()) {
+    <button type="button" class="dc-icon-button" (click)="onBack()" aria-label="Back">
+      <app-icon name="chevron-left" [size]="24" />
+    </button>
+  }
+  <div class="dc-header-title">
+    <h1>{{ title() }}</h1>
+    @if (subtitle()) {
+      <p>{{ subtitle() }}</p>
+    }
+  </div>
+  @if (showLanguageToggle()) {
+    <button
+      type="button"
+      class="dc-language"
+      (click)="toggleLanguage()"
+      aria-label="Change language"
+    >
+      {{ i18n.isMarathi() ? 'EN' : 'मराठी' }}
+    </button>
+  }
+</header>

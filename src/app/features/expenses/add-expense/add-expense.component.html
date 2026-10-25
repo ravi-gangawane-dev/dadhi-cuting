@@ -1,0 +1,61 @@
+<app-header title="Add Expense" [showBack]="true" backUrl="/expenses" />
+<form class="dc-content" (ngSubmit)="saveExpense()">
+  <label class="dc-field"
+    >Expense category<select
+      name="category"
+      [ngModel]="category()"
+      (ngModelChange)="category.set($event)"
+    >
+      @for (cat of categories; track cat) {
+        <option [value]="cat">{{ cat }}</option>
+      }
+    </select></label
+  ><label class="dc-field"
+    >Amount (₹)<input
+      type="number"
+      name="amount"
+      [ngModel]="amount()"
+      (ngModelChange)="amount.set($event)"
+      min="0.01"
+      step="0.01"
+      required /></label
+  ><label class="dc-field"
+    >Expense date<input
+      type="date"
+      name="date"
+      [ngModel]="date()"
+      (ngModelChange)="date.set($event)"
+      required /></label
+  ><label class="dc-field"
+    >Payment method<select
+      name="paidUsing"
+      [ngModel]="paidUsing()"
+      (ngModelChange)="paidUsing.set($event)"
+    >
+      <option value="cash">Cash</option>
+      <option value="upi">UPI</option>
+      <option value="card">Card</option>
+      <option value="bank_transfer">Bank transfer</option>
+    </select></label
+  ><label class="dc-field"
+    >Description<input
+      type="text"
+      name="title"
+      [ngModel]="title()"
+      (ngModelChange)="title.set($event)"
+      required /></label
+  ><label class="dc-field"
+    >Notes (optional)<input
+      type="text"
+      name="notes"
+      [ngModel]="notes()"
+      (ngModelChange)="notes.set($event)" /></label
+  ><label class="dc-field"
+    >Receipt image (optional)<input
+      type="file"
+      accept="image/jpeg,image/png,image/webp,application/pdf"
+      (change)="onFile($event)" /></label
+  ><button class="dc-button" type="submit" [disabled]="store.saving()">
+    {{ store.saving() ? 'Saving…' : 'Save Expense' }}
+  </button>
+</form>

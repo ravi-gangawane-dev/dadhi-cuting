@@ -1,0 +1,27 @@
+<span
+  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold leading-normal"
+  [class.bg-[var(--color-success)]]="
+    status() === 'Done' ||
+    status() === 'paid' ||
+    status() === 'active' ||
+    status() === 'Regular customer'
+  "
+  [class.text-[var(--color-success)]]="
+    status() === 'Done' ||
+    status() === 'paid' ||
+    status() === 'active' ||
+    status() === 'Regular customer'
+  "
+  [class.bg-[var(--color-surface-secondary)]]="
+    status() === 'Booked' || status() === 'pending' || status() === 'partially_paid'
+  "
+  [class.text-[var(--color-accent)]]="
+    status() === 'Booked' || status() === 'pending' || status() === 'partially_paid'
+  "
+  [class.bg-[var(--color-error)]]="status() === 'Cancelled' || status() === 'voided'"
+  [class.text-[var(--color-error)]]="status() === 'Cancelled' || status() === 'voided'"
+  [class.bg-[var(--color-surface-secondary)]]="status() === 'Guest record' || status() === 'closed'"
+  [class.text-[var(--color-text-secondary)]]="status() === 'Guest record' || status() === 'closed'"
+>
+  {{ label() || status() }}
+</span>

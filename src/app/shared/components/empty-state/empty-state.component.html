@@ -1,0 +1,27 @@
+<div class="w-full py-10 px-4 flex flex-col items-center justify-center text-center">
+  <div
+    class="w-16 h-16 rounded-full bg-[var(--color-text-primary)]/10 text-[var(--color-accent)] flex items-center justify-center mb-3"
+  >
+    <app-icon [name]="icon()" [size]="28" />
+  </div>
+
+  <h4 class="text-base font-bold text-[var(--color-text-primary)]">
+    {{ title() }}
+  </h4>
+
+  @if (message()) {
+    <p class="text-xs text-[var(--color-text-secondary)] mt-1 max-w-[260px]">
+      {{ message() }}
+    </p>
+  }
+
+  @if (actionLabel()) {
+    <button
+      type="button"
+      (click)="actionClicked.emit()"
+      class="mt-4 px-4 py-2 bg-[var(--color-text-primary)] text-[#F0D4A1] text-xs font-bold rounded-xl active:scale-95 transition-all shadow-xs"
+    >
+      {{ actionLabel() }}
+    </button>
+  }
+</div>

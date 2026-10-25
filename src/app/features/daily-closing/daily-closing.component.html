@@ -1,0 +1,75 @@
+<app-header title="Daily Closing" [showBack]="true" backUrl="/dashboard" />
+<div class="dc-content">
+  <label class="dc-field">Closing date<input type="date" [value]="store.today()" readonly /></label>
+  @if (isClosed()) {
+    <p class="dc-summary" role="status">Day Closed Successfully</p>
+  }
+  <section class="dc-summary dc-stack">
+    <div class="dc-row justify-between">
+      <span>Total revenue</span><strong>{{ formatCurrency(totalRevenue()) }}</strong>
+    </div>
+    <div class="dc-row justify-between">
+      <span>Total expenses</span><strong>{{ formatCurrency(totalExpenses()) }}</strong>
+    </div>
+    <div class="dc-row justify-between">
+      <span>Net earnings</span><strong>{{ formatCurrency(todayKPIs().netResult) }}</strong>
+    </div>
+  </section>
+  <h2 class="dc-heading">Payment breakdown</h2>
+  <div class="dc-card dc-row justify-between">
+    <span>Cash</span><strong>{{ formatCurrency(cashCollected()) }}</strong>
+  </div>
+  <div class="dc-card dc-row justify-between">
+    <span>UPI</span><strong>{{ formatCurrency(upiCollected()) }}</strong>
+  </div>
+  <div class="dc-card dc-row justify-between">
+    <span>Card</span><strong>{{ formatCurrency(store.paymentMethodTotals().card) }}</strong>
+  </div>
+  <div class="dc-grid">
+    <label class="dc-field"
+      >Opening cash<input
+        name="openingCash"
+        type="number"
+        [ngModel]="openingCash()"
+        (ngModelChange)="openingCash.set($event)"
+        min="0"
+        step="0.01"
+        [disabled]="isClosed()" /></label
+    ><label class="dc-field"
+      >Counted cash<input
+        name="countedCash"
+        type="number"
+        [ngModel]="countedCash()"
+        (ngModelChange)="countedCash.set($event)"
+        min="0"
+        step="0.01"
+        [disabled]="isClosed()"
+    /></label>
+  </div>
+  <div class="dc-card dc-stack">
+    <div class="dc-row justify-between">
+      <span>Expected cash</span><strong>{{ formatCurrency(expectedCash()) }}</strong>
+    </div>
+    <div class="dc-row justify-between">
+      <span>Cash difference</span
+      ><strong class="text-2xl" [class.dc-error]="difference() !== 0">{{
+        formatCurrency(difference())
+      }}</strong>
+    </div>
+  </div>
+  <button class="dc-button" (click)="closeDay()" [disabled]="isClosed() || isClosing()">
+    {{ isClosing() ? 'Closing…' : 'Close Business Day' }}
+  </button>
+  <details class="dc-card">
+    <summary>Closing history</summary>
+    @for (day of store.closingHistory(); track day.id) {
+      <div class="dc-row justify-between py-3">
+        <span>{{ day.date }}</span
+        ><span>Difference {{ formatCurrency(day.variance) }}</span>
+      </div>
+    } @empty {
+      <p class="dc-muted">No closed days yet.</p>
+    }
+  </details>
+  <a routerLink="/reports" class="dc-button dc-outline">View reports</a>
+</div>

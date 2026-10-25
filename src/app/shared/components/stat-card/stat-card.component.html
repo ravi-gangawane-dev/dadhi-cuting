@@ -1,0 +1,39 @@
+<div
+  class="relative p-4 rounded-[16px] h-[96px] flex flex-col justify-between transition-shadow hover:shadow-xl"
+  [class.bg-[var(--color-text-primary)]]="variant() === 'dark'"
+  [class.text-[var(--color-text-primary)]]="variant() === 'dark'"
+  [class.bg-white]="variant() === 'light'"
+  [class.border]="variant() === 'light'"
+  [class.border-[var(--color-border)]]="variant() === 'light'"
+  [class.border-[var(--color-accent)]/30]="highlight()"
+  [class.shadow-xl]="highlight()"
+>
+  <div class="flex items-start justify-between">
+    <div
+      class="text-[22px] sm:text-[24px] font-extrabold tracking-tight leading-tight"
+      [class.text-[var(--color-accent)]]="variant() === 'dark'"
+      [class.text-[var(--color-text-primary)]]="variant() === 'light'"
+    >
+      {{ value() }}
+    </div>
+    @if (showTrend()) {
+      <div
+        class="text-sm font-semibold leading-none"
+        [class.text-[var(--color-accent)]]="variant() === 'dark'"
+        [class.text-[var(--color-success)]]="variant() === 'light'"
+        [class.border-[var(--color-accent)]/30]="highlight()"
+        [class.border-rounded]="highlight()"
+      >
+        <app-icon name="arrow-up-right" [size]="16" />
+      </div>
+    }
+  </div>
+
+  <div
+    class="text-[11px] font-normal leading-tight line-clamp-1"
+    [class.text-[var(--color-text-secondary)]]="variant() === 'dark'"
+    [class.text-[var(--color-text-secondary)]]="variant() === 'light'"
+  >
+    {{ title() }}
+  </div>
+</div>

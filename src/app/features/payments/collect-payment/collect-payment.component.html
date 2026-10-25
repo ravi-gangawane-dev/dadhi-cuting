@@ -1,0 +1,93 @@
+<app-header title="Collect Payment" [showBack]="true" backUrl="/payments" />
+<div class="dc-content">
+  @if (entry(); as bill) {
+    <h2 class="dc-heading">Customer</h2>
+    <div class="dc-card dc-row">
+      <span class="dc-avatar">{{ customerName().slice(0, 1) }}</span>
+      <div>
+        <strong>{{ customerName() }}</strong>
+        <p class="dc-muted">{{ staffName() }}</p>
+      </div>
+    </div>
+    <h2 class="dc-heading">Bill details</h2>
+    @for (service of bill.services; track $index) {
+      <div class="dc-card dc-row justify-between">
+        <strong>{{ service.name }}</strong
+        ><strong>₹{{ service.price }}</strong>
+      </div>
+    }
+    <div class="dc-row justify-between">
+      <span>Discount</span><strong>₹{{ bill.discount }}</strong>
+    </div>
+    <h2 class="dc-heading">Payment method</h2>
+    <div class="dc-chips">
+      @for (method of paymentMethods; track method) {
+        <button
+          class="dc-chip"
+          [class.active]="selectedMethod() === method"
+          [attr.aria-pressed]="selectedMethod() === method"
+          (click)="selectMethod(method)"
+        >
+          {{ method === 'pending' ? 'Pay later' : method.toUpperCase() }}
+        </button>
+      }
+    </div>
+    @if (isSplit()) {
+      <div class="dc-grid">
+        <label class="dc-field"
+          >Cash part (₹)<input
+            name="splitCashAmount"
+            type="number"
+            [ngModel]="splitCashAmount()"
+            (ngModelChange)="splitCashAmount.set($event)"
+            min="0"
+            step="0.01" /></label
+        ><label class="dc-field"
+          >UPI part (₹)<input
+            name="splitUpiAmount"
+            type="number"
+            [ngModel]="splitUpiAmount()"
+            (ngModelChange)="splitUpiAmount.set($event)"
+            min="0"
+            step="0.01"
+        /></label>
+      </div>
+    }
+    <section class="dc-summary dc-row justify-between">
+      <span>Outstanding</span><strong class="text-2xl">₹{{ outstanding() }}</strong>
+    </section>
+    @if (selectedMethod() !== 'pending') {
+      <label class="dc-field"
+        >Amount received<input
+          name="amount"
+          type="number"
+          [ngModel]="amount()"
+          (ngModelChange)="amount.set($event)"
+          min="0.01"
+          step="0.01"
+          [max]="outstanding()" /></label
+      ><label class="dc-field"
+        >Receipt / reference (optional)<input
+          name="reference"
+          type="text"
+          [ngModel]="reference()"
+          (ngModelChange)="reference.set($event)" /></label
+      ><label class="dc-row"
+        ><input type="checkbox" [ngModel]="confirmed()" (ngModelChange)="confirmed.set($event)" /> I
+        have confirmed receipt of this payment.</label
+      >
+      <p class="dc-muted">
+        UPI and card receipts are recorded manually. Confirm settlement before saving.
+      </p>
+    }
+    <button class="dc-button" (click)="confirmPayment()" [disabled]="store.saving() || !entry()">
+      {{
+        selectedMethod() === 'pending'
+          ? 'Keep payment pending'
+          : 'Confirm received payment ₹' + amount()
+      }}
+    </button>
+  } @else {
+    <p class="dc-card dc-muted">Select an invoice from Payments to collect a payment.</p>
+  }
+</div>

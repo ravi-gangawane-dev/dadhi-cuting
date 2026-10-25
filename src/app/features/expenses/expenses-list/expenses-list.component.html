@@ -1,0 +1,95 @@
+<app-header title="Expenses" [showBack]="true" backUrl="/dashboard" />
+<div class="dc-content">
+  <div class="dc-chips">
+    <button class="dc-chip" [class.active]="!category()" (click)="category.set('')">All</button>
+    @for (cat of store.expenseCategories(); track cat.id) {
+      <button
+        class="dc-chip"
+        [class.active]="category() === cat.name"
+        (click)="category.set(cat.name)"
+      >
+        {{ cat.name }}
+      </button>
+    }
+  </div>
+  <div class="dc-grid">
+    <label class="dc-field"
+      >From<input
+        name="from"
+        type="date"
+        [ngModel]="from()"
+        (ngModelChange)="from.set($event)" /></label
+    ><label class="dc-field"
+      >To<input name="to" type="date" [ngModel]="to()" (ngModelChange)="to.set($event)"
+    /></label>
+  </div>
+  <section class="dc-summary">
+    <p class="dc-muted">TOTAL EXPENSES IN PERIOD</p>
+    <p class="dc-amount">₹{{ periodTotal().toLocaleString('en-IN') }}</p>
+  </section>
+  @for (expense of filteredExpenses(); track expense.id) {
+    <div class="dc-card">
+      <div class="dc-row">
+        <span class="dc-avatar">{{ expense.title.slice(0, 1) }}</span>
+        <div class="dc-grow">
+          <strong>{{ expense.title }}</strong>
+          <p class="dc-muted">
+            {{ expense.date }} · {{ expense.category }} · {{ expense.paidUsing }}
+          </p>
+        </div>
+        <strong>₹{{ expense.amount }}</strong>
+      </div>
+      <div class="dc-row justify-end">
+        <button class="dc-text-button" (click)="editExpense(expense.id)">Edit</button
+        ><button class="dc-text-button" (click)="deleting.set(expense)">Delete</button>
+      </div>
+    </div>
+  } @empty {
+    <p class="dc-card dc-muted">No expenses in this period.</p>
+  }
+  <button class="dc-button" (click)="goToNewExpense()">+ Add Expense</button>
+  <details class="dc-card">
+    <summary>Manage expense categories</summary>
+    <div class="dc-stack mt-4">
+      <label class="dc-field"
+        >New category<input
+          name="newCategory"
+          type="text"
+          [ngModel]="newCategory()"
+          (ngModelChange)="newCategory.set($event)" /></label
+      ><button
+        class="dc-button dc-outline"
+        (click)="addCategory()"
+        [disabled]="store.saving() || !newCategory().trim()"
+      >
+        Add category
+      </button>
+      @for (cat of store.expenseCategories(); track cat.id) {
+        <div class="dc-row justify-between">
+          <span>{{ cat.name }}</span
+          ><button class="dc-text-button" (click)="startRename(cat.id, cat.name)">Rename</button>
+        </div>
+      }
+      @if (renamingId()) {
+        <label class="dc-field"
+          >Category name<input
+            name="renamingName"
+            type="text"
+            [ngModel]="renamingName()"
+            (ngModelChange)="renamingName.set($event)" /></label
+        ><button class="dc-button" (click)="saveRename()">Save category</button>
+      }
+    </div>
+  </details>
+</div>
+<app-custom-dialog
+  [isOpen]="deleting() !== null"
+  title="Delete expense"
+  (closed)="deleting.set(null)"
+  ><div class="dc-stack">
+    <p>Delete {{ deleting()?.title }}?</p>
+    <button class="dc-button dc-danger" (click)="confirmDelete()" [disabled]="store.saving()">
+      Delete expense
+    </button>
+  </div></app-custom-dialog
+>

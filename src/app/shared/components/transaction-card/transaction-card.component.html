@@ -1,0 +1,31 @@
+<button
+  type="button"
+  (click)="clicked.emit()"
+  class="w-full h-[68px] bg-white border border-[var(--color-border)] rounded-[16px] px-3.5 flex items-center justify-between gap-3 shadow-xs active:bg-[var(--color-background)] transition-colors cursor-pointer select-none"
+>
+  <div class="flex items-center gap-3 min-w-0">
+    <div
+      class="w-[38px] h-[38px] rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)] font-bold text-xs flex items-center justify-center shrink-0"
+    >
+      {{ initials() }}
+    </div>
+
+    <div class="flex flex-col min-w-0">
+      <span class="text-[13px] font-bold text-[var(--color-text-primary)] truncate leading-snug">
+        {{ title() }}
+      </span>
+      <span class="text-[11px] text-[var(--color-text-secondary)] truncate leading-tight">
+        {{ subtitle() }}
+      </span>
+    </div>
+  </div>
+
+  <div class="flex flex-col items-end gap-1 shrink-0">
+    <span class="text-[14px] font-bold text-[var(--color-text-primary)]">
+      {{ amount() }}
+    </span>
+    @if (showStatusBadge()) {
+      <app-status-badge [status]="status()" />
+    }
+  </div>
+</button>

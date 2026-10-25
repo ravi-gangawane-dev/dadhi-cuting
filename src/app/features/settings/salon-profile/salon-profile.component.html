@@ -1,0 +1,64 @@
+<app-header title="Salon Profile" [showBack]="true" backUrl="/settings" />
+<div class="dc-content">
+  <section class="dc-login-brand !min-h-0 !rounded-2xl">
+    <img src="assets/images/dadhicutting-logo.svg" alt="DadhiCutting" class="dc-brand-logo" />
+    <p>Salon management</p>
+  </section>
+  <form [formGroup]="form" (ngSubmit)="save()" class="dc-stack">
+    <label class="dc-field"
+      >Salon name<input formControlName="name" type="text" />
+      @if (hasError('name')) {
+        <span class="dc-error">Please enter a valid salon name.</span>
+      }</label
+    ><label class="dc-field"
+      >Phone number<input formControlName="phone" type="tel" />
+      @if (hasError('phone')) {
+        <span class="dc-error">Please enter a valid phone number.</span>
+      }</label
+    ><label class="dc-field"
+      >Address / city<input formControlName="city" type="text" />
+      @if (hasError('city')) {
+        <span class="dc-error">Please enter a valid address / city.</span>
+      }</label
+    ><label class="dc-field"
+      >Opening time<input formControlName="openingTime" type="text" />
+      @if (hasError('openingTime')) {
+        <span class="dc-error">Please enter a valid opening time.</span>
+      }</label
+    ><label class="dc-field"
+      >Closing time<input formControlName="closingTime" type="text" />
+      @if (hasError('closingTime')) {
+        <span class="dc-error">Please enter a valid closing time.</span>
+      }</label
+    ><label class="dc-field"
+      >Salon timezone<input formControlName="timezone" type="text" />
+      @if (hasError('timezone')) {
+        <span class="dc-error">Please enter a valid salon timezone.</span>
+      }
+    </label>
+    <div class="dc-chips">
+      <button
+        type="button"
+        class="dc-chip"
+        [class.active]="selectedLanguage() === 'en'"
+        (click)="setLanguage('en')"
+      >
+        English</button
+      ><button
+        type="button"
+        class="dc-chip"
+        [class.active]="selectedLanguage() === 'mr'"
+        (click)="setLanguage('mr')"
+      >
+        मराठी
+      </button>
+    </div>
+    <app-file-upload kind="logo" [recordId]="store.salon().id" label="Salon logo" /><button
+      type="submit"
+      class="dc-button"
+      [disabled]="isSaving()"
+    >
+      {{ isSaving() ? 'Saving…' : 'Save Profile' }}
+    </button>
+  </form>
+</div>

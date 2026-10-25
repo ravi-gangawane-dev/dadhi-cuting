@@ -1,0 +1,143 @@
+<app-header title="Services & Pricing" [showBack]="true" backUrl="/dashboard" />
+<div class="dc-content">
+  <input
+    class="dc-search"
+    aria-label="Search services"
+    placeholder="Search services or categories"
+    [ngModel]="searchQuery()"
+    (ngModelChange)="searchQuery.set($event)"
+  />
+  <div class="dc-chips">
+    <button class="dc-chip" [class.active]="!selectedCategory()" (click)="selectedCategory.set('')">
+      All
+    </button>
+    @for (cat of store.categories(); track cat.id) {
+      @if (cat.active) {
+        <button
+          class="dc-chip"
+          [class.active]="selectedCategory() === cat.name"
+          (click)="selectedCategory.set(cat.name)"
+        >
+          {{ cat.name }}
+        </button>
+      }
+    }
+  </div>
+  <label class="dc-muted"
+    ><input type="checkbox" [ngModel]="showArchived()" (ngModelChange)="showArchived.set($event)" />
+    Include archived services</label
+  >
+  @for (service of filteredServices(); track service.id) {
+    <div class="dc-card">
+      <div class="dc-row">
+        <span class="dc-avatar">{{ service.codeLetter }}</span>
+        <div class="dc-grow">
+          <strong>{{ service.name }}</strong>
+          <p class="dc-muted">
+            {{ service.durationMinutes }} min · {{ service.category }}
+            {{ service.active ? '' : '· Archived' }}
+          </p>
+        </div>
+        <strong>₹{{ service.price }}</strong>
+      </div>
+      @if (store.canManage()) {
+        <div class="dc-row justify-end">
+          <button class="dc-text-button" (click)="editService(service)">Edit</button
+          ><button class="dc-text-button" [disabled]="store.saving()" (click)="archive(service)">
+            {{ service.active ? 'Archive' : 'Reactivate' }}
+          </button>
+        </div>
+      }
+    </div>
+  } @empty {
+    <p class="dc-card dc-muted">No services found.</p>
+  }
+  @if (store.canManage()) {
+    <button class="dc-button" (click)="openAddModal()">+ Add New Service</button>
+    <details class="dc-card">
+      <summary>Manage categories</summary>
+      <div class="dc-stack mt-4">
+        <label class="dc-field"
+          >New category<input
+            type="text"
+            name="categoryName"
+            [ngModel]="categoryName()"
+            (ngModelChange)="categoryName.set($event)" /></label
+        ><button
+          class="dc-button dc-outline"
+          (click)="addCategory()"
+          [disabled]="store.saving() || !categoryName().trim()"
+        >
+          Add category
+        </button>
+        @for (cat of store.categories(); track cat.id) {
+          <div class="dc-row">
+            <span class="dc-grow">{{ cat.name }}</span
+            ><button class="dc-text-button" (click)="startRename(cat.id, cat.name)">Rename</button
+            ><button class="dc-text-button" (click)="toggleCategory(cat.id, cat.active)">
+              {{ cat.active ? 'Archive' : 'Activate' }}
+            </button>
+          </div>
+        }
+        @if (renamingId()) {
+          <label class="dc-field"
+            >Category name<input
+              type="text"
+              name="renamingName"
+              [ngModel]="renamingName()"
+              (ngModelChange)="renamingName.set($event)" /></label
+          ><button class="dc-button" (click)="saveRename()">Save category</button>
+        }
+      </div>
+    </details>
+  }
+</div>
+<app-custom-dialog
+  [isOpen]="showAddModal()"
+  [title]="editId() ? 'Edit Service' : 'Add Service'"
+  (closed)="showAddModal.set(false)"
+  ><form class="dc-stack" (ngSubmit)="saveNewService()">
+    <label class="dc-field"
+      >Service name<input
+        type="text"
+        name="newServiceName"
+        [ngModel]="newServiceName()"
+        (ngModelChange)="newServiceName.set($event)"
+        required /></label
+    ><label class="dc-field"
+      >Price (₹)<input
+        type="number"
+        name="newServicePrice"
+        [ngModel]="newServicePrice()"
+        (ngModelChange)="newServicePrice.set($event)"
+        min="0"
+        required /></label
+    ><label class="dc-field"
+      >Duration (minutes)<input
+        type="number"
+        name="newServiceDuration"
+        [ngModel]="newServiceDuration()"
+        (ngModelChange)="newServiceDuration.set($event)"
+        min="1"
+        required /></label
+    ><label class="dc-field"
+      >Category<select
+        name="category"
+        [ngModel]="newServiceCategory()"
+        (ngModelChange)="newServiceCategory.set($event)"
+      >
+        @for (cat of store.categories(); track cat.id) {
+          @if (cat.active) {
+            <option [value]="cat.name">{{ cat.name }}</option>
+          }
+        }
+      </select></label
+    ><button
+      class="dc-button"
+      type="submit"
+      [disabled]="store.saving() || !newServiceName().trim()"
+    >
+      Save service
+    </button>
+  </form></app-custom-dialog
+>

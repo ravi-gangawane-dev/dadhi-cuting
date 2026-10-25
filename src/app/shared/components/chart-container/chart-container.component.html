@@ -1,0 +1,29 @@
+<section class="dc-stack">
+  <h3 class="dc-muted">{{ title() }}</h3>
+  @if (data().length) {
+    <div class="dc-chart" role="img" [attr.aria-label]="title()">
+      @for (point of points(); track $index) {
+        <div
+          class="dc-chart-column"
+          [style.height.%]="((105 - point.y) / 85) * 100"
+          [title]="point.label + ': ₹' + point.value"
+        ></div>
+      }
+    </div>
+    <div class="dc-row justify-between dc-muted">
+      <span>{{ startLabel() }}</span
+      ><span>{{ endLabel() }}</span>
+    </div>
+    <details>
+      <summary class="dc-muted">View chart data</summary>
+      @for (row of data(); track $index) {
+        <div class="dc-row justify-between dc-muted">
+          <span>{{ row.label }}</span
+          ><span>₹{{ row.value }}</span>
+        </div>
+      }
+    </details>
+  } @else {
+    <p class="dc-muted py-8">No revenue in this period.</p>
+  }
+</section>

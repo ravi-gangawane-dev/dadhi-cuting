@@ -1,0 +1,52 @@
+<app-header title="Customer Profile" [showBack]="true" backUrl="/customers" />
+<div class="dc-content">
+  @if (customer(); as cust) {
+    <section class="text-center">
+      <div class="dc-avatar dc-avatar-large">{{ cust.initials }}</div>
+      <h2 class="dc-page-title">{{ cust.name }}</h2>
+      <p class="dc-muted">{{ cust.badge }}</p>
+    </section>
+    <div class="grid grid-cols-3 gap-2">
+      <div class="dc-card text-center !px-2">
+        <strong>{{ cust.visitsCount }}</strong>
+        <p class="dc-muted">Total visits</p>
+      </div>
+      <div class="dc-card text-center !px-2">
+        <strong>₹{{ cust.lifetimeSpend }}</strong>
+        <p class="dc-muted">Total spend</p>
+      </div>
+      <div class="dc-card text-center !px-2">
+        <strong class="text-sm">{{ cust.lastVisit || 'No visits' }}</strong>
+        <p class="dc-muted">Last visit</p>
+      </div>
+    </div>
+    <h2 class="dc-heading">Contact & preferences</h2>
+    <div class="dc-card dc-row">
+      <app-icon name="phone" />
+      <div>
+        <p class="dc-muted">Phone</p>
+        <strong>{{ cust.phone }}</strong>
+      </div>
+    </div>
+    <div class="dc-card">
+      <p class="dc-muted">Preferences</p>
+      <p>{{ cust.notes || 'No preferences recorded' }}</p>
+    </div>
+    <h2 class="dc-heading">Recent visits</h2>
+    @for (entry of customerEntries(); track entry.id) {
+      <div class="dc-card dc-row justify-between">
+        <div>
+          <strong>{{ entry.services[0]?.name }}</strong>
+          <p class="dc-muted">{{ entry.businessDate }}</p>
+        </div>
+        <strong>₹{{ entry.total }}</strong>
+      </div>
+    } @empty {
+      <p class="dc-muted">No services recorded.</p>
+    }
+    <a routerLink="/services/new" class="dc-button">+ Create New Bill</a
+    ><a routerLink="/customers" class="dc-button dc-outline">Manage customer</a>
+  } @else {
+    <p class="dc-card dc-muted">Customer not found.</p>
+  }
+</div>

@@ -1,0 +1,96 @@
+<header class="dc-header">
+  <img
+    src="assets/images/dadhicutting-logo.svg"
+    alt="DadhiCutting"
+    width="180"
+    height="52"
+    class="object-contain"
+  /><a routerLink="/notifications" class="dc-icon-button ml-auto" aria-label="Notifications"
+    ><app-icon name="bell"
+  /></a>
+</header>
+<div class="dc-content">
+  <div>
+    <p class="dc-muted">Welcome back</p>
+    <h1 class="dc-page-title">Salon overview</h1>
+    <p class="dc-muted">{{ store.salon().name }} · {{ store.today() }}</p>
+  </div>
+  <section class="dc-revenue">
+    <p>Today's revenue</p>
+    <p class="dc-amount">₹{{ store.todayRevenue().toLocaleString('en-IN') }}</p>
+  </section>
+  <div class="dc-grid">
+    <div class="dc-card">
+      <app-icon name="scissors" />
+      <p class="dc-muted">Total services</p>
+      <strong class="text-2xl">{{ store.todayServicesCount() }}</strong>
+    </div>
+    <div class="dc-card">
+      <app-icon name="users" />
+      <p class="dc-muted">Customers</p>
+      <strong class="text-2xl">{{ store.todayVisits() }}</strong>
+    </div>
+    <div class="dc-card">
+      <app-icon name="wallet" />
+      <p class="dc-muted">Pending dues</p>
+      <strong class="text-2xl">₹{{ store.todayPending().toLocaleString('en-IN') }}</strong>
+    </div>
+    <div class="dc-card">
+      <app-icon name="receipt" />
+      <p class="dc-muted">Expenses</p>
+      <strong class="text-2xl">₹{{ store.todayExpenses().toLocaleString('en-IN') }}</strong>
+    </div>
+  </div>
+  <h2 class="dc-heading">Quick actions</h2>
+  <div class="grid grid-cols-4 gap-2">
+    @for (
+      action of [
+        { path: '/services/new', label: 'Add service', icon: 'plus' },
+        { path: '/customers', label: 'Customers', icon: 'users' },
+        { path: '/payments', label: 'Payment', icon: 'wallet' },
+        { path: '/appointments', label: 'Booking', icon: 'calendar' },
+      ];
+      track action.path
+    ) {
+      @if (store.canAccess(action.path)) {
+        <a
+          [routerLink]="action.path"
+          class="dc-card flex flex-col items-center gap-2 text-xs text-center !px-1"
+          ><app-icon [name]="action.icon" />{{ action.label }}</a
+        >
+      }
+    }
+  </div>
+  <div class="dc-row justify-between">
+    <h2 class="dc-heading">Recent services</h2>
+    @if (store.canOperate()) {
+      <a routerLink="/payments" class="dc-text-button">View all</a>
+    }
+  </div>
+  @for (entry of recentEntries(); track entry.id) {
+    <div class="dc-card dc-row">
+      <span class="dc-avatar">{{ entry.customerName.slice(0, 1) }}</span>
+      <div class="dc-grow">
+        <strong>{{ entry.customerName }}</strong>
+        <p class="dc-muted">{{ entry.services[0]?.name }} · {{ entry.employeeName }}</p>
+      </div>
+      <div class="text-right">
+        <strong>₹{{ entry.total }}</strong>
+        <p class="dc-muted">{{ entry.time }}</p>
+      </div>
+    </div>
+  } @empty {
+    <p class="dc-card dc-muted">No services recorded yet.</p>
+  }
+  <h2 class="dc-heading">Staff performance</h2>
+  @for (emp of topStaff(); track emp.id) {
+    <a [routerLink]="['/employees', emp.id]" class="dc-card dc-row"
+      ><span class="dc-avatar">{{ emp.initials }}</span>
+      <div class="dc-grow">
+        <strong>{{ emp.name }}</strong>
+        <p class="dc-muted">{{ emp.servicesToday }} services today</p>
+      </div>
+      <strong>₹{{ emp.salesToday }}</strong></a
+    >
+  }
+</div>

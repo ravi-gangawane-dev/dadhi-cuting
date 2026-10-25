@@ -1,0 +1,8 @@
+[build]
+  command = "node scripts/configure-environment.mjs && npm run build"
+  publish = "dist/DadhiCuting/browser"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

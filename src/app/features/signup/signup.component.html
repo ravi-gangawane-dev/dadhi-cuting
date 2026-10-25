@@ -1,0 +1,269 @@
+<div class="min-h-screen bg-[var(--color-background)] flex flex-col select-none">
+  <!-- Top bar -->
+  <header class="flex items-center gap-3 px-5 pt-6 pb-2">
+    <a
+      routerLink="/auth/login"
+      aria-label="Back to sign in"
+      class="w-9 h-9 rounded-full bg-white border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-primary)] active:scale-95 transition-transform"
+    >
+      <svg
+        class="w-4 h-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M19 12H5M12 19l-7-7 7-7" />
+      </svg>
+    </a>
+    <div>
+      <h1 class="text-[16px] font-bold text-[var(--color-text-primary)]">Create your account</h1>
+      <p class="text-[11px] text-[var(--color-text-secondary)]">
+        For salon owners, managers and staff
+      </p>
+    </div>
+  </header>
+
+  <div class="flex-1 flex flex-col">
+    <!-- Brand -->
+    <div class="px-6 pt-3 pb-5 text-center animate-fade-in">
+      <img
+        src="assets/images/dadhicutting-logo.svg"
+        alt="DadhiCutting"
+        class="dc-brand-logo mx-auto mb-4"
+      />
+      <h2 class="mt-3 text-[20px] font-bold text-[var(--color-text-primary)]">Join DadhiCutting</h2>
+      <p class="text-[12px] text-[var(--color-text-secondary)] mt-0.5">प्रत्येक कटचा हिशेब!</p>
+    </div>
+
+    @if (sentTo()) {
+      <!-- Confirmation required -->
+      <div class="flex-1 bg-white rounded-t-[28px] px-6 py-8 shadow-2xl">
+        <div class="flex flex-col items-center text-center gap-3">
+          <div
+            class="w-14 h-14 rounded-full bg-[var(--color-surface-secondary)] flex items-center justify-center"
+          >
+            <svg
+              class="w-7 h-7 text-[var(--color-primary)]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <path d="m3 7 9 6 9-6" />
+            </svg>
+          </div>
+          <h3 class="text-[17px] font-bold text-[var(--color-text-primary)]">Confirm your email</h3>
+          <p class="text-[13px] text-[var(--color-text-secondary)] leading-relaxed">
+            We sent a confirmation link to
+            <span class="font-semibold text-[var(--color-text-primary)]">{{ sentTo() }}</span
+            >. Open it, then sign in with your email and password.
+          </p>
+          <a
+            routerLink="/auth/login"
+            class="mt-3 w-full h-[56px] bg-[var(--color-primary)] rounded-[14px] flex items-center justify-center text-[16px] font-bold text-white active:scale-95 transition-transform"
+          >
+            Back to sign in
+          </a>
+          <button
+            type="button"
+            (click)="sentTo.set('')"
+            class="text-[12px] text-[var(--color-primary)] font-semibold py-1"
+          >
+            Use a different email
+          </button>
+        </div>
+      </div>
+    } @else {
+      <form
+        class="flex-1 bg-white rounded-t-[28px] px-6 pt-6 pb-8 shadow-2xl animate-slide-up flex flex-col gap-4"
+        (ngSubmit)="submit()"
+        novalidate
+      >
+        <!-- Full name -->
+        <div>
+          <label
+            for="fullName"
+            class="block text-[11px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider mb-1.5"
+          >
+            Full name
+          </label>
+          <input
+            id="fullName"
+            name="fullName"
+            type="text"
+            autocomplete="name"
+            [ngModel]="fullName()"
+            (ngModelChange)="fullName.set($event)"
+            placeholder="Rohan Patil"
+            class="w-full h-[49px] px-4 bg-white border rounded-xl text-sm font-semibold text-[var(--color-text-primary)] placeholder:text-[#A7BBB1] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] transition-colors"
+            [class.border-[var(--color-border)]]="!fieldError('fullName')"
+            [class.border-red-400]="!!fieldError('fullName')"
+          />
+          @if (fieldError('fullName')) {
+            <p class="text-[11px] text-red-500 font-medium mt-1">{{ fieldError('fullName') }}</p>
+          }
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label
+            for="signupEmail"
+            class="block text-[11px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider mb-1.5"
+          >
+            Email address
+          </label>
+          <input
+            id="signupEmail"
+            name="email"
+            type="email"
+            inputmode="email"
+            autocomplete="email"
+            [ngModel]="email()"
+            (ngModelChange)="email.set($event)"
+            placeholder="you@example.com"
+            class="w-full h-[49px] px-4 bg-white border rounded-xl text-sm font-semibold text-[var(--color-text-primary)] placeholder:text-[#A7BBB1] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] transition-colors"
+            [class.border-[var(--color-border)]]="!fieldError('email')"
+            [class.border-red-400]="!!fieldError('email')"
+          />
+          @if (fieldError('email')) {
+            <p class="text-[11px] text-red-500 font-medium mt-1">{{ fieldError('email') }}</p>
+          }
+        </div>
+
+        <!-- Mobile -->
+        <div>
+          <label
+            for="signupMobile"
+            class="block text-[11px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider mb-1.5"
+          >
+            Mobile number
+          </label>
+          <div class="relative flex items-center">
+            <span class="absolute left-4 text-sm font-bold text-[var(--color-text-secondary)]"
+              >+91</span
+            >
+            <input
+              id="signupMobile"
+              name="mobile"
+              type="tel"
+              inputmode="tel"
+              autocomplete="tel-national"
+              maxlength="10"
+              [ngModel]="mobile()"
+              (ngModelChange)="mobile.set($event)"
+              placeholder="98765 43210"
+              class="w-full h-[49px] pl-14 pr-4 bg-white border rounded-xl text-sm font-semibold text-[var(--color-text-primary)] placeholder:text-[#A7BBB1] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] transition-colors"
+              [class.border-[var(--color-border)]]="!fieldError('mobile')"
+              [class.border-red-400]="!!fieldError('mobile')"
+            />
+          </div>
+          @if (fieldError('mobile')) {
+            <p class="text-[11px] text-red-500 font-medium mt-1">{{ fieldError('mobile') }}</p>
+          } @else {
+            <p class="text-[11px] text-[#A7BBB1] mt-1">
+              Used to sign in and to reset your password.
+            </p>
+          }
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label
+            for="signupPassword"
+            class="block text-[11px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider mb-1.5"
+          >
+            Password
+          </label>
+          <div class="relative flex items-center">
+            <input
+              id="signupPassword"
+              name="password"
+              [type]="showPassword() ? 'text' : 'password'"
+              autocomplete="new-password"
+              [ngModel]="password()"
+              (ngModelChange)="password.set($event)"
+              placeholder="At least 8 characters"
+              class="w-full h-[49px] pl-4 pr-12 bg-white border rounded-xl text-sm font-semibold text-[var(--color-text-primary)] placeholder:text-[#A7BBB1] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] transition-colors"
+              [class.border-[var(--color-border)]]="!fieldError('password')"
+              [class.border-red-400]="!!fieldError('password')"
+            />
+            <button
+              type="button"
+              (click)="showPassword.set(!showPassword())"
+              class="absolute right-3 w-8 h-8 flex items-center justify-center text-[var(--color-text-secondary)]"
+              [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+            >
+              <svg
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              </svg>
+            </button>
+          </div>
+          @if (fieldError('password')) {
+            <p class="text-[11px] text-red-500 font-medium mt-1">{{ fieldError('password') }}</p>
+          }
+        </div>
+
+        <!-- Confirm password -->
+        <div>
+          <label
+            for="signupConfirm"
+            class="block text-[11px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider mb-1.5"
+          >
+            Confirm password
+          </label>
+          <input
+            id="signupConfirm"
+            name="confirmPassword"
+            [type]="showPassword() ? 'text' : 'password'"
+            autocomplete="new-password"
+            [ngModel]="confirmPassword()"
+            (ngModelChange)="confirmPassword.set($event)"
+            placeholder="••••••••"
+            class="w-full h-[49px] px-4 bg-white border rounded-xl text-sm font-semibold text-[var(--color-text-primary)] placeholder:text-[#A7BBB1] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] transition-colors"
+            [class.border-[var(--color-border)]]="!fieldError('confirmPassword')"
+            [class.border-red-400]="!!fieldError('confirmPassword')"
+          />
+          @if (fieldError('confirmPassword')) {
+            <p class="text-[11px] text-red-500 font-medium mt-1">
+              {{ fieldError('confirmPassword') }}
+            </p>
+          }
+        </div>
+
+        <button
+          type="submit"
+          [disabled]="isLoading()"
+          class="w-full h-[56px] bg-[var(--color-primary)] rounded-[14px] flex items-center justify-center font-bold text-[16px] text-white active:scale-95 transition-transform disabled:opacity-60 mt-1"
+        >
+          {{ isLoading() ? 'Creating account…' : 'Create account' }}
+        </button>
+
+        <p class="text-[13px] text-[var(--color-text-secondary)] text-center">
+          Already have an account?
+          <a
+            routerLink="/auth/login"
+            class="text-[var(--color-primary)] font-semibold hover:underline"
+            >Sign in</a
+          >
+        </p>
+
+        <p class="text-[11px] text-[#A7BBB1] text-center">
+          Your salon data stays private to your account.
+        </p>
+      </form>
+    }
+  </div>
+</div>

@@ -1,0 +1,80 @@
+@if (isOpen()) {
+  <div
+    class="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex items-end justify-center animate-fade-in"
+    (click)="closed.emit()"
+  >
+    <div
+      class="w-full max-w-[440px] bg-[var(--color-surface)] rounded-t-[28px] p-6 pb-24 shadow-2xl animate-slide-up flex flex-col gap-4 max-h-[85vh] overflow-y-auto"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-label="More options"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (keydown.escape)="closed.emit()"
+    >
+      <!-- Sheet Handle -->
+      <div class="w-12 h-1.5 bg-[var(--color-border)] rounded-full mx-auto -mt-2 mb-2"></div>
+
+      <!-- Sheet Header -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-xl font-extrabold text-[var(--color-text-primary)]">
+            {{ i18n.isMarathi() ? 'अधिक पर्याय' : 'More Options' }}
+          </h3>
+          <p class="text-xs text-[var(--color-text-secondary)] mt-0.5">
+            DadhiCuting (दाढी कटिंग) — प्रत्येक कटचा हिशेब!
+          </p>
+        </div>
+        <button
+          type="button"
+          (click)="closed.emit()"
+          aria-label="Close menu"
+          cdkFocusInitial
+          class="w-8 h-8 rounded-full bg-[var(--color-background)] text-[var(--color-text-secondary)] flex items-center justify-center"
+        >
+          <app-icon name="close" [size]="16" />
+        </button>
+      </div>
+
+      <!-- Menu Grid -->
+      <div class="grid grid-cols-2 gap-3 mt-1">
+        @for (item of visibleMenuItems(); track item.route) {
+          <button
+            type="button"
+            (click)="navigate(item.route)"
+            class="flex items-center gap-3 p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)]/60 hover:bg-[var(--color-background)] active:scale-[0.98] transition-all text-left group"
+          >
+            <div
+              class="w-9 h-9 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-accent)] flex items-center justify-center shadow-xs"
+            >
+              <app-icon [name]="item.icon" [size]="18" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-[13px] font-bold text-[var(--color-text-primary)] truncate">
+                {{ i18n.isMarathi() ? item.titleMarathi : item.title }}
+              </div>
+              <div class="text-[10px] text-[var(--color-text-secondary)] truncate">
+                {{ i18n.isMarathi() ? item.title : item.titleMarathi }}
+              </div>
+            </div>
+          </button>
+        }
+      </div>
+
+      <!-- Bottom Quick Actions: Refresh data -->
+      <div class="pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
+        <button
+          type="button"
+          (click)="onReset()"
+          class="text-xs text-[var(--color-text-secondary)] hover:text-[#CC514C] font-semibold flex items-center gap-1.5 transition-colors"
+        >
+          <app-icon name="trash" [size]="14" />
+          <span>Refresh data</span>
+        </button>
+
+        <span class="text-[11px] text-[var(--color-text-secondary)]"> v1.0 • Mobile First </span>
+      </div>
+    </div>
+  </div>
+}

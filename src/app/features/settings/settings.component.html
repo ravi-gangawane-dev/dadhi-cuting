@@ -1,0 +1,73 @@
+<app-header title="Settings" [showBack]="true" backUrl="/dashboard" />
+<div class="dc-content">
+  @for (item of visibleBusinessItems(); track item.label) {
+    <button class="dc-card dc-row text-left" (click)="navigateTo(item.route)">
+      <app-icon [name]="item.icon" /><strong class="dc-grow">{{
+        i18n.isMarathi() ? item.labelMarathi : item.label
+      }}</strong
+      ><app-icon name="chevron-right" />
+    </button>
+  }
+  @for (item of visibleAppItems(); track item.label) {
+    <button class="dc-card dc-row text-left" (click)="navigateTo(item.route)">
+      <app-icon [name]="item.icon" /><strong class="dc-grow">{{
+        i18n.isMarathi() ? item.labelMarathi : item.label
+      }}</strong
+      ><app-icon name="chevron-right" />
+    </button>
+  }
+  <button class="dc-card dc-row" (click)="toggleLanguage()">
+    <app-icon name="settings" /><strong
+      >Language: {{ i18n.isMarathi() ? 'मराठी' : 'English' }}</strong
+    >
+  </button>
+  <details class="dc-card">
+    <summary>Your account & mobile verification</summary>
+    <form class="dc-stack mt-4" (ngSubmit)="saveProfile()">
+      <label class="dc-field"
+        >Full name<input
+          type="text"
+          name="fullName"
+          [ngModel]="fullName()"
+          (ngModelChange)="fullName.set($event)"
+          required /></label
+      ><label class="dc-field"
+        >Mobile number<input
+          type="tel"
+          name="mobile"
+          [ngModel]="mobile()"
+          (ngModelChange)="mobile.set($event)" /></label
+      ><button type="submit" class="dc-button" [disabled]="store.saving()">Save profile</button
+      ><button
+        type="button"
+        class="dc-button dc-outline"
+        (click)="startMobileVerification()"
+        [disabled]="store.saving() || mobileVerified()"
+      >
+        {{ mobileVerified() ? 'Mobile verified' : 'Verify mobile with OTP' }}
+      </button>
+    </form>
+  </details>
+  <button class="dc-button dc-danger" (click)="logout()">
+    {{ i18n.isMarathi() ? 'बाहेर पडा' : 'Log out' }}
+  </button>
+  <p class="dc-muted text-center">DadhiCutting · {{ buildNumber() }}</p>
+</div>
+<app-custom-dialog
+  [isOpen]="showOtpDialog()"
+  title="Verify mobile number"
+  (closed)="showOtpDialog.set(false)"
+  ><div class="dc-stack">
+    <p class="dc-muted">Enter the code sent to {{ pendingMobile() }}.</p>
+    <label class="dc-field"
+      >One-time code<input
+        type="text"
+        name="otp"
+        [ngModel]="otp()"
+        (ngModelChange)="otp.set($event)"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="6" /></label
+    ><button class="dc-button" (click)="confirmMobileVerification()">Verify code</button>
+  </div></app-custom-dialog
+>

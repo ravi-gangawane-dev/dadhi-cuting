@@ -1,0 +1,60 @@
+<div
+  class="min-h-screen bg-[var(--color-background)] flex flex-col justify-between relative overflow-hidden select-none"
+>
+  <!-- Header -->
+  <div class="flex-1 flex flex-col items-center justify-center pt-10 pb-4 px-6 text-center">
+    <img
+      src="assets/images/dadhicutting-logo.svg"
+      alt="DadhiCutting"
+      class="dc-brand-logo mx-auto mb-4"
+    />
+    <h1 class="text-[22px] font-extrabold text-[var(--color-text-primary)]">Set up your salon</h1>
+    <p class="text-[13px] text-[var(--color-text-secondary)] mt-1.5 max-w-[280px]">
+      Hi {{ store.currentUser().name }}. Create your salon to start recording services and payments.
+    </p>
+  </div>
+
+  <!-- Form Card -->
+  <div class="w-full bg-white rounded-t-[28px] p-6 sm:p-7 shadow-2xl flex flex-col gap-4">
+    <div>
+      <label
+        class="block text-[12px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider mb-1.5"
+        for="salonName"
+      >
+        Salon name
+      </label>
+      <input
+        id="salonName"
+        type="text"
+        name="salonName"
+        autocomplete="organization"
+        [ngModel]="salonName()"
+        (ngModelChange)="salonName.set($event)"
+        (keydown.enter)="createSalon()"
+        placeholder="e.g. DadhiCuting Studio"
+        class="w-full h-[49px] px-4 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+      />
+    </div>
+
+    <button
+      type="button"
+      (click)="createSalon()"
+      [disabled]="isLoading() || !salonName().trim()"
+      class="w-full h-[56px] bg-[var(--color-primary)] rounded-[14px] flex items-center justify-center font-bold text-[16px] text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {{ isLoading() ? 'Creating salon…' : 'Create salon & continue' }}
+    </button>
+
+    <button
+      type="button"
+      (click)="signOut()"
+      class="w-full h-[44px] text-[13px] font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
+    >
+      Sign out
+    </button>
+
+    <p class="text-[11px] text-[#A7BBB1] text-center">
+      You will be the owner of this salon. Staff access is provisioned separately.
+    </p>
+  </div>
+</div>

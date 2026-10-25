@@ -1,0 +1,175 @@
+<app-header title="Add Service" [showBack]="true" backUrl="/dashboard" />
+<div class="dc-content">
+  <label class="dc-field"
+    >Customer (optional)<button
+      type="button"
+      class="dc-card dc-row justify-between"
+      (click)="showCustomerModal.set(true)"
+    >
+      <span>{{ selectedCustomer().name }}</span
+      ><app-icon name="search" /></button
+  ></label>
+  <h2 class="dc-heading">Select employee</h2>
+  <div class="dc-chips">
+    @for (emp of activeEmployees(); track emp.id) {
+      <button
+        class="dc-chip"
+        [class.active]="selectedEmployeeId() === emp.id"
+        [attr.aria-pressed]="selectedEmployeeId() === emp.id"
+        (click)="chooseStaff(emp)"
+      >
+        {{ emp.name }}
+      </button>
+    } @empty {
+      <p class="dc-muted">Add an active employee before recording services.</p>
+    }
+  </div>
+  <h2 class="dc-heading">Select services</h2>
+  <input
+    class="dc-search"
+    aria-label="Search services"
+    placeholder="Search services"
+    [ngModel]="serviceQuery()"
+    (ngModelChange)="serviceQuery.set($event)"
+  />
+  <div class="dc-service-grid">
+    @for (service of activeServices(); track service.id) {
+      <button
+        class="dc-service-tile"
+        [class.selected]="isServiceSelected(service.id)"
+        [attr.aria-pressed]="isServiceSelected(service.id)"
+        (click)="toggleService(service)"
+      >
+        <app-icon name="scissors" [size]="26" /><strong>{{ service.name }}</strong
+        ><span>₹{{ service.price }}</span>
+      </button>
+    } @empty {
+      <p class="dc-muted">No active services.</p>
+    }
+  </div>
+  <label class="dc-field"
+    >Discount (₹)<input
+      type="number"
+      name="discount"
+      [ngModel]="discount()"
+      (ngModelChange)="discount.set($event)"
+      min="0"
+      step="0.01"
+  /></label>
+  <section class="dc-summary dc-row justify-between">
+    <div>
+      <p class="dc-muted">Estimated total</p>
+      <p class="dc-amount">₹{{ estimatedTotal().toLocaleString('en-IN') }}</p>
+    </div>
+    <span>{{ selectedServices().length }} services</span>
+  </section>
+  <p class="dc-muted">
+    The bill is saved as unpaid. Collect full or partial payment in the next step.
+  </p>
+  <button
+    class="dc-button"
+    (click)="continueToPayment()"
+    [disabled]="!selectedServices().length || store.saving() || !selectedEmployeeId()"
+  >
+    {{ store.saving() ? 'Saving…' : i18n.t('continueToPayment') }}
+  </button>
+</div>
+<!-- Staff Selector Modal -->
+<app-custom-dialog
+  [isOpen]="showStaffModal()"
+  title="Select Staff Member"
+  subtitle="Assign the service to a stylist or barber"
+  (closed)="showStaffModal.set(false)"
+>
+  <div class="flex flex-col gap-2">
+    @for (emp of activeEmployees(); track emp.id) {
+      <button
+        type="button"
+        (click)="chooseStaff(emp)"
+        class="w-full p-3 rounded-xl border border-[var(--color-border)] flex items-center justify-between active:bg-[var(--color-background)] transition-colors text-left"
+        [class.bg-[var(--color-background)]]="selectedEmployeeId() === emp.id"
+        [class.border-[var(--color-accent)]]="selectedEmployeeId() === emp.id"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="w-9 h-9 rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)] font-bold text-xs flex items-center justify-center"
+          >
+            {{ emp.initials }}
+          </div>
+          <div>
+            <div class="text-sm font-bold text-[var(--color-text-primary)]">{{ emp.name }}</div>
+            <div class="text-xs text-[var(--color-text-secondary)]">
+              {{ emp.roleDisplay }} · {{ emp.servicesToday }} services today
+            </div>
+          </div>
+        </div>
+        @if (selectedEmployeeId() === emp.id) {
+          <span class="text-[var(--color-accent)]"><app-icon name="check" [size]="18" /></span>
+        }
+      </button>
+    }
+  </div>
+</app-custom-dialog>
+
+<!-- Customer Selector Modal -->
+<app-custom-dialog
+  [isOpen]="showCustomerModal()"
+  title="Select Customer"
+  subtitle="Choose an existing client or walk-in guest"
+  (closed)="showCustomerModal.set(false)"
+>
+  <div class="flex flex-col gap-2">
+    <!-- Walk-in option -->
+    <button
+      type="button"
+      (click)="chooseCustomer(null)"
+      class="w-full p-3 rounded-xl border border-[var(--color-border)] flex items-center justify-between active:bg-[var(--color-background)] transition-colors text-left"
+      [class.bg-[var(--color-background)]]="selectedCustomerId() === 'cust_walkin'"
+      [class.border-[var(--color-accent)]]="selectedCustomerId() === 'cust_walkin'"
+    >
+      <div class="flex items-center gap-3">
+        <div
+          class="w-9 h-9 rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)] font-bold text-xs flex items-center justify-center"
+        >
+          W
+        </div>
+        <div>
+          <div class="text-sm font-bold text-[var(--color-text-primary)]">Walk-in customer</div>
+          <div class="text-xs text-[var(--color-text-secondary)]">Quick anonymous service</div>
+        </div>
+      </div>
+      @if (selectedCustomerId() === 'cust_walkin') {
+        <span class="text-[var(--color-accent)]"><app-icon name="check" [size]="18" /></span>
+      }
+    </button>
+
+    @for (cust of store.customers(); track cust.id) {
+      @if (!cust.isWalkIn) {
+        <button
+          type="button"
+          (click)="chooseCustomer(cust)"
+          class="w-full p-3 rounded-xl border border-[var(--color-border)] flex items-center justify-between active:bg-[var(--color-background)] transition-colors text-left"
+          [class.bg-[var(--color-background)]]="selectedCustomerId() === cust.id"
+          [class.border-[var(--color-accent)]]="selectedCustomerId() === cust.id"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="w-9 h-9 rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)] font-bold text-xs flex items-center justify-center"
+            >
+              {{ cust.initials }}
+            </div>
+            <div>
+              <div class="text-sm font-bold text-[var(--color-text-primary)]">{{ cust.name }}</div>
+              <div class="text-xs text-[var(--color-text-secondary)]">
+                {{ cust.phone }} · {{ cust.visitsCount }} visits
+              </div>
+            </div>
+          </div>
+          @if (selectedCustomerId() === cust.id) {
+            <span class="text-[var(--color-accent)]"><app-icon name="check" [size]="18" /></span>
+          }
+        </button>
+      }
+    }
+  </div>
+</app-custom-dialog>

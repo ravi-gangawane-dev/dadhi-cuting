@@ -1,0 +1,39 @@
+<div class="w-full flex flex-col gap-1.5">
+  @if (label()) {
+    <label
+      class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider"
+    >
+      {{ label() }}
+    </label>
+  }
+
+  <div class="relative w-full flex items-center">
+    @if (prefixText()) {
+      <span class="absolute left-3.5 text-sm font-semibold text-[var(--color-text-secondary)]">
+        {{ prefixText() }}
+      </span>
+    }
+
+    <input
+      [type]="type()"
+      [attr.aria-label]="label() || placeholder()"
+      [attr.aria-invalid]="!!errorMessage()"
+      [value]="value"
+      (input)="handleInput($event)"
+      (blur)="onTouched()"
+      [disabled]="isDisabled || disabled()"
+      [placeholder]="placeholder()"
+      class="w-full h-[49px] bg-white border border-[var(--color-primary-border)] rounded-xl text-sm font-medium text-[var(--color-primary-text)] placeholder:text-[var(--color-primary-muted)] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus-ring-[var(--color-primary-gold)] transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+      [class.pl-8]="!!prefixText()"
+      [class.pl-3.5]="!prefixText()"
+      [class.pr-3.5]="true"
+      [class.border-red-400]="!!errorMessage()"
+    />
+  </div>
+
+  @if (errorMessage()) {
+    <span class="text-[11px] text-red-500 font-medium">
+      {{ errorMessage() }}
+    </span>
+  }
+</div>

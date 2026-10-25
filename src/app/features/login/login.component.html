@@ -1,0 +1,205 @@
+<div class="dc-login">
+  <section class="dc-login-brand">
+    <img src="assets/images/dadhicutting-logo.svg" alt="DadhiCutting" class="dc-brand-logo" />
+    <p>SALON · BOOKING · MANAGEMENT</p>
+  </section>
+  <section class="dc-content">
+    <div>
+      <h1 class="dc-page-title">Welcome back</h1>
+      <p class="dc-muted">Sign in to manage your salon</p>
+    </div>
+    <form class="dc-stack" (ngSubmit)="onSubmit()">
+      <label class="dc-field"
+        >Mobile number or email<input
+          name="mobile"
+          type="text"
+          autocomplete="username"
+          [ngModel]="mobileNumber()"
+          (ngModelChange)="mobileNumber.set($event)"
+          placeholder="Mobile number or email"
+          required
+      /></label>
+      <label class="dc-field"
+        >Password<input
+          name="pwd"
+          type="password"
+          autocomplete="current-password"
+          [ngModel]="password()"
+          (ngModelChange)="password.set($event)"
+          placeholder="Enter your password"
+          required
+      /></label>
+      <button type="button" class="dc-text-button self-end" (click)="openForgotPassword()">
+        Forgot password?
+      </button>
+      <button type="submit" class="dc-button" [disabled]="isLoading()">
+        {{ isLoading() ? 'Please wait…' : 'Sign in' }}
+      </button>
+      <button type="button" class="dc-button dc-outline" (click)="openForgotPassword()">
+        Recover access with OTP
+      </button>
+    </form>
+    <p class="dc-muted text-center">
+      New to DadhiCutting? <a routerLink="/auth/signup" class="dc-text-button">Create an account</a>
+    </p>
+  </section>
+</div>
+<!-- Forgot Password Dialog -->
+<app-custom-dialog
+  [isOpen]="showForgotModal()"
+  [title]="i18n.t('forgotPassword')"
+  subtitle="Reset your login password"
+  (closed)="closeForgotPassword()"
+>
+  <div class="flex flex-col gap-4">
+    @switch (resetStep()) {
+      @case ('mobile') {
+        <p class="text-xs text-[var(--color-text-secondary)]">
+          Enter your registered mobile number. We will send a 6-digit code by SMS.
+        </p>
+        <div class="flex flex-col gap-1">
+          <label
+            for="resetMobile"
+            class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase"
+            >Mobile number</label
+          >
+          <input
+            id="resetMobile"
+            type="tel"
+            inputmode="tel"
+            autocomplete="tel"
+            [ngModel]="resetMobile()"
+            (ngModelChange)="resetMobile.set($event)"
+            (keydown.enter)="sendOtp()"
+            placeholder="10-digit mobile"
+            class="w-full h-[49px] px-4 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold text-[var(--color-text-primary)]"
+          />
+        </div>
+        <button
+          type="button"
+          (click)="sendOtp()"
+          [disabled]="isLoading()"
+          class="w-full h-[48px] bg-[var(--color-primary)] text-white text-sm font-bold rounded-xl active:scale-95 transition-transform disabled:opacity-60"
+        >
+          {{ isLoading() ? 'Sending…' : 'Send OTP' }}
+        </button>
+        <button
+          type="button"
+          (click)="resetStep.set('email')"
+          class="text-[12px] text-[var(--color-primary)] font-semibold self-center"
+        >
+          Send the code to my email instead
+        </button>
+      }
+      @case ('otp') {
+        <p class="text-xs text-[var(--color-text-secondary)]">
+          @if (otpChannel() === 'sms') {
+            Enter the 6-digit code sent to {{ resetMobile() }}. The code expires in a few minutes.
+          } @else {
+            Enter the 6-digit code sent to {{ resetEmail() }}. The code expires in a few minutes.
+          }
+        </p>
+        <div class="flex flex-col gap-1">
+          <label
+            for="resetOtp"
+            class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase"
+            >One-time code</label
+          >
+          <input
+            id="resetOtp"
+            type="text"
+            inputmode="numeric"
+            maxlength="6"
+            autocomplete="one-time-code"
+            [ngModel]="otp()"
+            (ngModelChange)="otp.set($event)"
+            (keydown.enter)="verifyOtp()"
+            placeholder="123456"
+            class="w-full h-[49px] px-4 bg-white border border-[var(--color-border)] rounded-xl text-lg font-bold tracking-[0.4em] text-center text-[var(--color-text-primary)]"
+          />
+        </div>
+        <button
+          type="button"
+          (click)="verifyOtp()"
+          [disabled]="isLoading()"
+          class="w-full h-[48px] bg-[var(--color-primary)] text-white text-sm font-bold rounded-xl active:scale-95 transition-transform disabled:opacity-60"
+        >
+          {{ isLoading() ? 'Checking…' : 'Verify code' }}
+        </button>
+        <button
+          type="button"
+          (click)="resetStep.set(otpChannel() === 'sms' ? 'mobile' : 'email')"
+          class="text-[12px] text-[var(--color-primary)] font-semibold self-center"
+        >
+          {{ otpChannel() === 'sms' ? 'Change number or resend' : 'Change email or resend' }}
+        </button>
+      }
+      @case ('password') {
+        <p class="text-xs text-[var(--color-text-secondary)]">
+          Number verified. Choose a new password of at least 8 characters.
+        </p>
+        <div class="flex flex-col gap-1">
+          <label
+            for="resetPassword"
+            class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase"
+            >New password</label
+          >
+          <input
+            id="resetPassword"
+            type="password"
+            autocomplete="new-password"
+            [ngModel]="newPassword()"
+            (ngModelChange)="newPassword.set($event)"
+            (keydown.enter)="saveNewPassword()"
+            placeholder="••••••••"
+            class="w-full h-[49px] px-4 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold text-[var(--color-text-primary)]"
+          />
+        </div>
+        <button
+          type="button"
+          (click)="saveNewPassword()"
+          [disabled]="isLoading()"
+          class="w-full h-[48px] bg-[var(--color-primary)] text-white text-sm font-bold rounded-xl active:scale-95 transition-transform disabled:opacity-60"
+        >
+          {{ isLoading() ? 'Saving…' : 'Update password' }}
+        </button>
+      }
+      @case ('email') {
+        <p class="text-xs text-[var(--color-text-secondary)]">
+          Enter your registered email and we will send a 6-digit code.
+        </p>
+        <div class="flex flex-col gap-1">
+          <label
+            for="resetEmail"
+            class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase"
+            >Email address</label
+          >
+          <input
+            id="resetEmail"
+            type="email"
+            autocomplete="email"
+            [ngModel]="resetEmail()"
+            (ngModelChange)="resetEmail.set($event)"
+            (keydown.enter)="sendEmailCode()"
+            class="w-full h-[49px] px-4 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold text-[var(--color-text-primary)]"
+          />
+        </div>
+        <button
+          type="button"
+          (click)="sendEmailCode()"
+          [disabled]="isLoading()"
+          class="w-full h-[48px] bg-[var(--color-primary)] text-white text-sm font-bold rounded-xl active:scale-95 transition-transform disabled:opacity-60"
+        >
+          {{ isLoading() ? 'Sending…' : 'Send code by email' }}
+        </button>
+        <button
+          type="button"
+          (click)="resetStep.set('mobile')"
+          class="text-[12px] text-[var(--color-primary)] font-semibold self-center"
+        >
+          Use a mobile OTP instead
+        </button>
+      }
+    }
+  </div>
+</app-custom-dialog>

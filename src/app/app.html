@@ -1,0 +1,21 @@
+<app-toast />
+<div class="app-shell">
+  <main id="main-content">
+    @if (!online()) {
+      <p role="status" class="dc-status dc-summary">
+        You are offline. Reconnect before saving changes.
+      </p>
+    }
+    @if (store.loading()) {
+      <p role="status" class="dc-status">Loading salon…</p>
+    }
+    @if (store.error() && !currentUrl().includes('/auth/login')) {
+      <p role="alert" class="dc-status dc-error">{{ store.error() }}</p>
+    }
+    <router-outlet />
+  </main>
+  @if (showBottomNav()) {
+    <app-bottom-navigation />
+  }
+  <app-more-menu-sheet [isOpen]="uiState.isMoreMenuOpen()" (closed)="closeMoreMenu()" />
+</div>

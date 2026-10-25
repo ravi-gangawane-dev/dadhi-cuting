@@ -1,0 +1,97 @@
+<app-header title="Payments" [showBack]="true" backUrl="/dashboard" />
+<div class="dc-content">
+  <input
+    class="dc-search"
+    aria-label="Search transactions"
+    placeholder="Search transactions"
+    [ngModel]="query()"
+    (ngModelChange)="query.set($event)"
+  />
+  <div class="dc-chips">
+    @for (method of methods; track method) {
+      <button
+        class="dc-chip"
+        [class.active]="filterMethod() === method"
+        (click)="filterMethod.set(method)"
+      >
+        {{ method | uppercase }}
+      </button>
+    }
+  </div>
+  <section class="dc-revenue">
+    <p>Collected today</p>
+    <p class="dc-amount">₹{{ store.todayCollected().toLocaleString('en-IN') }}</p>
+  </section>
+  <div class="dc-row justify-between">
+    <h2 class="dc-heading">Recent payments</h2>
+    <button class="dc-text-button" (click)="filterMethod.set('all')">View all</button>
+  </div>
+  @for (pay of filteredPayments(); track pay.id) {
+    <div class="dc-card">
+      <button class="dc-row w-full text-left" (click)="goToCollect(pay.invoiceId)">
+        <span class="dc-avatar">{{ pay.customerName.slice(0, 1) || '₹' }}</span>
+        <div class="dc-grow">
+          <strong>{{ pay.customerName || 'Walk-in customer' }}</strong>
+          <p class="dc-muted">{{ pay.method | uppercase }} · {{ pay.time }}</p>
+        </div>
+        <div class="text-right">
+          <strong>₹{{ pay.amount }}</strong>
+          <p class="dc-muted">{{ pay.status }}</p>
+        </div>
+      </button>
+      @if (store.canManage()) {
+        <div class="text-right">
+          <button class="dc-text-button" (click)="openCorrection(pay)">
+            {{ pay.method === 'pending' ? 'Void invoice' : 'Reverse receipt' }}
+          </button>
+        </div>
+      }
+    </div>
+  } @empty {
+    <p class="dc-card dc-muted">No payments found.</p>
+  }
+  <button class="dc-button" (click)="goToCollect()">+ Collect Payment</button>
+</div>
+<!-- Audited correction: void an unpaid invoice or reverse a receipt -->
+<app-custom-dialog
+  [isOpen]="correction() !== null"
+  [title]="correction()?.kind === 'invoice' ? 'Void invoice' : 'Reverse receipt'"
+  subtitle="This correction is written to the audit log"
+  (closed)="closeCorrection()"
+>
+  <div class="flex flex-col gap-4">
+    <p class="text-xs text-[var(--color-text-secondary)]">
+      @if (correction()?.kind === 'invoice') {
+        Void the unpaid invoice for {{ correction()?.label }}. Recorded receipts block this until
+        they are reversed.
+      } @else {
+        Remove the receipt for {{ correction()?.label }}. Only possible while that business day is
+        open.
+      }
+    </p>
+    <div class="flex flex-col gap-1">
+      <label
+        class="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase"
+        for="correctionReason"
+        >Reason</label
+      >
+      <input
+        id="correctionReason"
+        type="text"
+        name="correctionReason"
+        [ngModel]="reason()"
+        (ngModelChange)="reason.set($event)"
+        placeholder="e.g. Duplicate entry"
+        class="w-full h-[49px] px-4 bg-white border border-[var(--color-border)] rounded-xl text-sm font-semibold text-[var(--color-text-primary)]"
+      />
+    </div>
+    <button
+      type="button"
+      (click)="confirmCorrection()"
+      [disabled]="store.saving() || reason().trim().length < 3"
+      class="w-full h-[48px] bg-[#CC514C] text-white text-sm font-bold rounded-xl active:scale-95 transition-transform disabled:opacity-50"
+    >
+      {{ store.saving() ? 'Saving…' : 'Confirm correction' }}
+    </button>
+  </div>
+</app-custom-dialog>

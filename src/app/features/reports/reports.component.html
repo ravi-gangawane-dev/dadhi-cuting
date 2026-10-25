@@ -1,0 +1,81 @@
+<app-header title="Reports & Insights" [showBack]="true" backUrl="/dashboard" />
+<div class="dc-content">
+  <div class="dc-grid">
+    <label class="dc-field"
+      >From<input type="date" [ngModel]="from()" (ngModelChange)="setCustomFrom($event)" /></label
+    ><label class="dc-field"
+      >To<input type="date" [ngModel]="to()" (ngModelChange)="setCustomTo($event)"
+    /></label>
+  </div>
+  <div class="dc-chips">
+    @for (period of periods; track period.key) {
+      <button
+        class="dc-chip"
+        [class.active]="selectedPeriod() === period.key"
+        (click)="applyPeriod(period.key)"
+      >
+        {{ period.label }}
+      </button>
+    }
+  </div>
+  @if (from() > to()) {
+    <p class="dc-error" role="alert">Start date must be before end date.</p>
+  }
+  @if (loading()) {
+    <p role="status">Loading report…</p>
+  }
+  @if (error()) {
+    <p role="alert" class="dc-error">{{ error() }}</p>
+  }
+  <section class="dc-card">
+    <p class="dc-muted">Total revenue</p>
+    <p class="dc-amount text-[var(--color-primary)]">{{ formatCurrency(periodRevenue()) }}</p>
+    @if (growthPercentage() !== null) {
+      <p class="dc-muted">{{ growthPercentage() }}% compared to prior period</p>
+    }
+    <app-chart-container
+      title="Daily revenue"
+      [data]="chartData()"
+      [startLabel]="from()"
+      [endLabel]="to()"
+    />
+  </section>
+  <h2 class="dc-heading">Key insights</h2>
+  <div class="dc-card dc-row justify-between">
+    <span>Services completed</span><strong>{{ totalServices() }}</strong>
+  </div>
+  <div class="dc-card dc-row justify-between">
+    <span>Customer visits</span><strong>{{ stats().customers }}</strong>
+  </div>
+  <div class="dc-card dc-row justify-between">
+    <span>Pending dues</span><strong>{{ formatCurrency(report()?.outstanding ?? 0) }}</strong>
+  </div>
+  <h2 class="dc-heading">Top services</h2>
+  @for (service of topServices(); track service.name) {
+    <div class="dc-card">
+      <div class="dc-row justify-between">
+        <strong>{{ service.name }}</strong
+        ><span>{{ formatCurrency(service.revenue) }}</span>
+      </div>
+      <p class="dc-muted">{{ service.count }} services</p>
+      <progress
+        [value]="service.percent"
+        max="100"
+        class="w-full"
+        aria-label="Relative service revenue"
+      ></progress>
+    </div>
+  } @empty {
+    <p class="dc-muted">No service data for this period.</p>
+  }
+  <h2 class="dc-heading">Employee performance</h2>
+  @for (emp of performance(); track emp.id) {
+    <div class="dc-card dc-row justify-between">
+      <strong>{{ emp.name }}</strong
+      ><span>{{ formatCurrency(emp.salesToday) }}</span>
+    </div>
+  }
+  <button class="dc-button" (click)="exportCsv()" [disabled]="!report() || loading()">
+    Export CSV
+  </button>
+</div>

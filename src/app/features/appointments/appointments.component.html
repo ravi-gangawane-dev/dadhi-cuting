@@ -1,0 +1,216 @@
+<app-header title="Appointments" [showBack]="true" backUrl="/dashboard" />
+<div class="dc-content">
+  <div class="dc-chips">
+    @for (filter of ['all', 'today', 'upcoming', 'completed']; track filter) {
+      <button
+        class="dc-chip capitalize"
+        [class.active]="scheduleFilter() === filter"
+        (click)="scheduleFilter.set(filter)"
+      >
+        {{ filter }}
+      </button>
+    }
+  </div>
+  <h2 class="dc-heading">Salon schedule</h2>
+  @for (apt of visibleAppointments(); track apt.id) {
+    <article class="dc-card">
+      <div class="dc-row">
+        <strong class="text-[var(--color-primary)]">{{ apt.time }}</strong
+        ><span class="dc-avatar">{{ apt.customerName.slice(0, 1) }}</span>
+        <div class="dc-grow">
+          <strong>{{ apt.customerName }}</strong>
+          <p class="dc-muted">{{ apt.serviceName }}</p>
+          <p class="dc-muted">{{ apt.date }} · {{ apt.status }}</p>
+        </div>
+      </div>
+      @if (store.canOperate()) {
+        <div class="dc-chips mt-2">
+          @if (apt.status === 'Booked') {
+            <button class="dc-text-button" (click)="markDone(apt.id)">Done</button
+            ><button class="dc-text-button" (click)="markCancelled(apt.id)">Cancel</button>
+          }
+          <button class="dc-text-button" (click)="openReschedule(apt)">Edit</button
+          ><button class="dc-text-button" (click)="deleting.set(apt)">Delete</button>
+        </div>
+      }
+    </article>
+  } @empty {
+    <p class="dc-card dc-muted">No appointments scheduled.</p>
+  }
+  <button class="dc-button" (click)="showBooking.set(true)" [disabled]="!store.canOperate()">
+    + New Appointment
+  </button>
+</div>
+<app-custom-dialog
+  [isOpen]="showBooking()"
+  title="Book appointment"
+  (closed)="showBooking.set(false)"
+>
+  <form (ngSubmit)="book()" class="flex flex-col gap-3">
+    <label
+      >Customer<select
+        required
+        name="customer"
+        [ngModel]="customerId()"
+        (ngModelChange)="customerId.set($event)"
+        class="w-full border rounded-xl p-3"
+      >
+        <option value="">Select customer</option>
+        @for (c of store.customers(); track c.id) {
+          <option [value]="c.id">
+            {{ c.name }}
+          </option>
+        }
+      </select></label
+    >
+    <label
+      >Employee<select
+        required
+        name="employee"
+        [ngModel]="employeeId()"
+        (ngModelChange)="employeeId.set($event)"
+        class="w-full border rounded-xl p-3"
+      >
+        <option value="">Select employee</option>
+        @for (e of store.employees(); track e.id) {
+          @if (e.active) {
+            <option [value]="e.id">{{ e.name }}</option>
+          }
+        }
+      </select></label
+    >
+    <label
+      >Date<input
+        required
+        type="date"
+        name="date"
+        [ngModel]="bookingDate()"
+        (ngModelChange)="bookingDate.set($event)"
+        class="w-full border rounded-xl p-3"
+    /></label>
+    <label
+      >Start<input
+        required
+        type="time"
+        name="start"
+        [ngModel]="startTime()"
+        (ngModelChange)="startTime.set($event)"
+        class="w-full border rounded-xl p-3"
+    /></label>
+    <label
+      >End<input
+        required
+        type="time"
+        name="end"
+        [ngModel]="endTime()"
+        (ngModelChange)="endTime.set($event)"
+        class="w-full border rounded-xl p-3"
+    /></label>
+    <label
+      >Service / notes<input
+        name="notes"
+        [ngModel]="serviceName()"
+        (ngModelChange)="serviceName.set($event)"
+        class="w-full border rounded-xl p-3"
+    /></label>
+    <button
+      type="submit"
+      [disabled]="store.saving()"
+      class="rounded-xl bg-[var(--color-primary)] text-white p-3"
+    >
+      Book appointment
+    </button>
+  </form>
+</app-custom-dialog>
+
+<!-- Reschedule -->
+<app-custom-dialog
+  [isOpen]="editing() !== null"
+  title="Reschedule appointment"
+  subtitle="The server rejects overlapping slots"
+  (closed)="editing.set(null)"
+>
+  @if (editing(); as e) {
+    <form (ngSubmit)="saveReschedule()" class="flex flex-col gap-3">
+      <label
+        >Employee
+        <select
+          name="rsEmployee"
+          [ngModel]="e.employeeId"
+          (ngModelChange)="patchEditing({ employeeId: $event })"
+          class="w-full border rounded-xl p-3"
+        >
+          @for (emp of store.employees(); track emp.id) {
+            @if (emp.active) {
+              <option [value]="emp.id">{{ emp.name }}</option>
+            }
+          }
+        </select>
+      </label>
+      <label
+        >Date<input
+          required
+          type="date"
+          name="rsDate"
+          [ngModel]="e.date"
+          (ngModelChange)="patchEditing({ date: $event })"
+          class="w-full border rounded-xl p-3"
+      /></label>
+      <label
+        >Start<input
+          required
+          type="time"
+          name="rsStart"
+          [ngModel]="e.time"
+          (ngModelChange)="patchEditing({ time: $event })"
+          class="w-full border rounded-xl p-3"
+      /></label>
+      <label
+        >End<input
+          required
+          type="time"
+          name="rsEnd"
+          [ngModel]="e.endTime"
+          (ngModelChange)="patchEditing({ endTime: $event })"
+          class="w-full border rounded-xl p-3"
+      /></label>
+      <label
+        >Service / notes<input
+          name="rsNotes"
+          [ngModel]="e.serviceName"
+          (ngModelChange)="patchEditing({ serviceName: $event })"
+          class="w-full border rounded-xl p-3"
+      /></label>
+      <button
+        type="submit"
+        [disabled]="store.saving()"
+        class="rounded-xl bg-[var(--color-primary)] text-white p-3"
+      >
+        {{ store.saving() ? 'Saving…' : 'Save changes' }}
+      </button>
+    </form>
+  }
+</app-custom-dialog>
+
+<!-- Delete -->
+<app-custom-dialog
+  [isOpen]="deleting() !== null"
+  title="Delete appointment"
+  subtitle="This deletion is written to the audit log"
+  (closed)="deleting.set(null)"
+>
+  <div class="flex flex-col gap-4">
+    <p class="text-xs text-[var(--color-text-secondary)]">
+      Delete {{ deleting()?.customerName }}'s appointment on {{ deleting()?.date }} at
+      {{ deleting()?.time }}?
+    </p>
+    <button
+      type="button"
+      (click)="confirmDelete()"
+      [disabled]="store.saving()"
+      class="w-full h-[48px] bg-[#CC514C] text-white text-sm font-bold rounded-xl active:scale-95 transition-transform disabled:opacity-50"
+    >
+      {{ store.saving() ? 'Deleting…' : 'Delete appointment' }}
+    </button>
+  </div>
+</app-custom-dialog>

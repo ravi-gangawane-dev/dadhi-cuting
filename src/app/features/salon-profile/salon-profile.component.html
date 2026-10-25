@@ -1,0 +1,89 @@
+<div
+  class="w-full flex flex-col min-h-screen pb-8 relative overflow-hidden bg-[var(--color-primary-soft-beige)]"
+>
+  <!-- Top App Header -->
+  <app-header [title]="i18n.t('salonProfile')" [subtitle]="'Salon Details'" [showBack]="false" />
+
+  <div class="px-4.5 pt-4 flex flex-col gap-4">
+    <!-- Salon Logo and Info -->
+    <div
+      class="bg-white rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-6"
+    >
+      <!-- Logo -->
+      <div
+        class="w-32 h-32 rounded-xl flex-shrink-0 flex items-center justify-center bg-[var(--color-text-primary)]"
+      >
+        <svg
+          class="w-10 h-10 text-white"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        >
+          <path d="M12 2v20M2 12h20M8 12h.01M16 12h.01" />
+        </svg>
+      </div>
+
+      <!-- Salon Info -->
+      <div class="flex-1 min-w-0">
+        <h2 class="text-[20px] font-bold text-[var(--color-text-primary)] sm:text-[24px] mb-1">
+          {{ salon().name }}
+        </h2>
+        <p class="text-[12px] text-[#6B7280] sm:text-[14px]">
+          {{ salon().address }}
+        </p>
+
+        <!-- Contact Info -->
+        <div class="mt-4 pt-4 border-t border-[#F3F4F6]">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-[11px] text-[#6B7280] uppercase tracking-wider mb-1">
+                {{ i18n.t('phone') }}
+              </p>
+              <p class="text-[14px] text-[var(--color-text-primary)]">{{ salon().phone }}</p>
+            </div>
+            <div>
+              <p class="text-[11px] text-[#6B7280] uppercase tracking-wider mb-1">
+                {{ i18n.t('email') }}
+              </p>
+              <p class="text-[14px] text-[var(--color-text-primary)]">{{ salon().email }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Salon Services -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm">
+      <h3 class="text-[16px] font-bold text-[1F2936] mb-4">
+        {{ i18n.t('offeredServices') }}
+      </h3>
+
+      @if (salon().services.length === 0) {
+        <p class="text-[12px] text-[#6B7280]">
+          {{ i18n.t('noServices') }}
+        </p>
+      } @else {
+        <div class="grid grid-cols-2 gap-3">
+          @for (service of salon().services; track service.id) {
+            <div class="p-3 bg-[#F9FAFB] rounded-lg">
+              <p class="text-[12px] text-[#6B7280]">{{ service.name }}</p>
+              <p class="text-[11px] text-[#9CA3AF]">{{ service.price.toLocaleString('en-IN') }}</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="mt-6 flex gap-3">
+      <app-primary-button [routerLink]="'/services/new'" [label]="i18n.t('addService')" />
+
+      <app-primary-button
+        variant="outline"
+        [routerLink]="'/employees'"
+        [label]="i18n.t('manageStaff')"
+      />
+    </div>
+  </div>
+</div>

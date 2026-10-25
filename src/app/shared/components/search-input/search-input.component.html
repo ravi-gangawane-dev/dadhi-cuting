@@ -1,0 +1,26 @@
+<div class="relative w-full flex items-center">
+  <div
+    class="absolute left-3.5 text-[var(--color-text-secondary)] pointer-events-none flex items-center justify-center"
+  >
+    <app-icon name="search" [size]="18" />
+  </div>
+
+  <input
+    type="text"
+    [value]="value()"
+    (input)="onInput($event)"
+    [placeholder]="placeholder()" [attr.aria-label]="placeholder()"
+    class="w-full h-11 pl-10 pr-9 bg-white border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-colors"
+  />
+
+  @if (value()) {
+    <button
+      type="button"
+      (click)="clear()"
+      aria-label="Clear search"
+      class="absolute right-3 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1 flex items-center justify-center"
+    >
+      <app-icon name="close" [size]="14" />
+    </button>
+  }
+</div>
