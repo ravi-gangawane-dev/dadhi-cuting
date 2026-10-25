@@ -515,6 +515,14 @@ await check('platform admin exists with cross-salon inspect rights and no owner 
 async function insight() {
   await denied('select public.set_member_active($1,$2,$3)', [salon, suspendedUser, true]);
 }
+await check('admin verdict RPC lives in the public schema for the browser', async () => {
+  await as(superAdmin);
+  assert.equal(await scalar('select public.is_platform_admin()'), true);
+  await as(staff);
+  assert.equal(await scalar('select public.is_platform_admin()'), false);
+  await db.exec('reset role; set role anon;');
+  await denied('select public.is_platform_admin()');
+});
 await as(superAdmin);
 await check('platform-admin self-onboarding is blocked', async () => {
   await denied('select public.create_my_salon($1)', ['Admin salon']);
