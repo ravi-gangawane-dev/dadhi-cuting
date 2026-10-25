@@ -96,8 +96,8 @@ One real defect was found and fixed during Phase 9 (see `reports/BUG_REPORT.md`)
 
 1. ~~Apply migrations~~ — **Done** (operator approved; `202610250001`, `202610250002`, and BUG-05 fix `202610250003` are remote-synced).
 2. ~~Deploy Edge Functions~~ — **Done** (`manage-employee-account`, `platform-admin-ops` deployed ACTIVE, `verify_jwt` on).
-3. **Run the bootstrap** (interactive; needs the operator's env credentials): `npm run bootstrap:admin` — cannot be run by the agent.
-4. **Enroll MFA** for the Super Admin at `/platform-admin/mfa` with a first login.
+3. **Run the bootstrap** — **Done for the test identity** `super-admin.test@dadhi-testing.test` (audited). For go-live, the operator should provision the real admin mailbox the same way (idempotent, safe to run again) and then remove the test row.
+4. **Enroll MFA** — **Verified live for the test identity**: TOTP enroll → challenge/verify → assurance `aal2` confirmed via the app's own supabase-js path.
 5. Optional verification pass on the **live project** (salon creation, flag switching, employee login) after 3–4.
 
 ## 6. Honest limitations

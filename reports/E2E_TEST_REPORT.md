@@ -64,18 +64,24 @@ Layout: 19 screens × 7 viewports (320, 360, 390, 430, 768, 1024, 1440) — no o
 
 | Item | Result |
 |---|---|
-| `supabase db push` (migrations `202610250001`, `202610250002`, plus `202610250003` from BUG-05) | **Applied** — `supabase migration list` shows all 9 local/remote in sync |
+| `supabase db push` (migrations `202610250001`, `202610250002`, plus `202610250003` from BUG-05) | **Applied** — `supabase migration list` shows all migrations local/remote in sync |
 | `supabase functions deploy` (both functions) | **Deployed ACTIVE** with `verify_jwt: true` (version 1) |
 | Live REST probes (anon publishable key, read-only) | `is_platform_admin` → `42501` denied (exists, anon-locked); `feature_state` → `42501` denied; `set_member_active` → signature-resolution (exposed). Matches the designed lockdown |
+| Bootstrap (`scripts/bootstrap-super-admin.mjs`) | **Executed** for a test identity `super-admin.test@dadhi-testing.test` — temporary password issued once, `BOOTSTRAP_PLATFORM_ADMIN` audit row written |
+| Login with the temporary password (real session) | **OK** — session at `aal1` |
+| Verdict RPC with a real user JWT (`is_platform_admin`) | **`true`** — end-to-end proof of the BUG-05 fix |
+| `platform_audit_logs` read by the admin via RLS | **`BOOTSTRAP_PLATFORM_ADMIN` row readable** |
+| `feature_flags` registry as the admin | **14 seeded rows** (9 enabled + 5 planned, platform-unavailable) |
+| MFA enroll (TOTP, via the app's own supabase-js path) | **OK** — factor created with QR/secret |
+| MFA challenge + TOTP verify | **OK — assurance upgraded to `aal2`**; verdict returns `true` under the AAL2 session, so `platformGuard` reaches the `allowed` state |
 
 ## 5. Explicitly NOT executed (and why)
 
 | Item | Reason |
 |---|---|
-| `npm run bootstrap:admin` execution | Operator-only tool; interactive + service-role key |
-| Real MFA enrollment/AAL2 verification vs live Auth | Requires a real Super Admin session (bootstrap first) |
-| Live E2E of employee login provisioning (create/reset password against hosted Auth) | Requires an authenticated owner session in the live app |
-| Authenticated-user RPC probes (admin verdict `true`/`false` against real sessions) | No live account credentials are handled here |
+| Bootstrap for the **production** Super Admin identity | Only a test identity was provisioned (`super-admin.test@dadhi-testing.test`); the operator run for the real mailbox is the go-live step — the script is idempotent |
+| Owner-side live flows (create salon, invite owner, staff login creation) | Require an owner session in the live app; the test admin can drive these through the portal in a manual pass |
+| Authenticated RPC probes beyond the admin verdict | No salon-owner account exists in the live project yet |
 | Load/performance and browser matrix beyond bundled `msedge` | Out of scope for this project |
 | Redeploy/verification of Netlify hosting | Deployment pipeline untouched |
 
