@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PlatformAuthService } from '../../core/services/platform-auth.service';
 import { Router } from '@angular/router';
@@ -18,8 +18,12 @@ import { ToastService } from '../../core/services/toast.service';
       <div class="w-full max-w-sm bg-white rounded-2xl border border-black/10 p-6">
         <h1 class="text-base font-black">Two-factor authentication required</h1>
         <p class="text-xs text-[var(--color-text-secondary)] mt-1">
-          Platform administration requires an authenticator app (TOTP). Start enrollment, scan the
-          code with your authenticator, then confirm the 6-digit code.
+          @if (challenge()) {
+            Enter the 6-digit code from the authenticator registered for this account.
+          } @else {
+            Platform administration requires an authenticator app (TOTP). Start enrollment, scan
+            the code with your authenticator, then confirm the 6-digit code.
+          }
         </p>
 
         @if (qr()) {
@@ -45,19 +49,21 @@ import { ToastService } from '../../core/services/toast.service';
         <button
           type="button"
           class="mt-3 w-full text-xs font-black py-3 rounded-xl bg-[var(--color-text-primary)] text-[#F0D4A1] disabled:opacity-50"
-          [disabled]="busy() || !qr() || code().length < 6"
-          (click)="verify()"
+          [disabled]="busy() || code().length < 6 || (!challenge() && !qr())"
+          (click)="challenge() ? confirmChallenge() : verify()"
         >
-          {{ busy() ? 'Verifying…' : 'Confirm enrollment' }}
+          {{ busy() ? 'Verifying…' : (challenge() ? 'Verify code' : 'Confirm enrollment') }}
         </button>
-        <button
-          type="button"
-          class="mt-2 w-full text-xs font-bold py-2 rounded-xl disabled:opacity-50"
-          [disabled]="busy() || qr()"
-          (click)="enroll()"
-        >
-          {{ qr() ? 'Code shown above' : 'Start enrollment' }}
-        </button>
+        @if (!challenge()) {
+          <button
+            type="button"
+            class="mt-2 w-full text-xs font-bold py-2 rounded-xl disabled:opacity-50"
+            [disabled]="busy() || qr()"
+            (click)="enroll()"
+          >
+            {{ qr() ? 'Code shown above' : 'Start enrollment' }}
+          </button>
+        }
         <button type="button" class="mt-4 w-full text-xs text-[var(--color-text-secondary)] underline" (click)="signOut()">
           Use a different account
         </button>
@@ -74,7 +80,19 @@ export class PlatformMfaComponent {
   readonly code = signal('');
   readonly busy = signal(false);
   readonly error = signal('');
+  /** challenge = an authenticator is already registered for this identity. */
+  readonly challenge = signal(false);
   private factorId = '';
+
+  async ngOnInit(): Promise<void> {
+    // A returning administrator must only prove the factor they already have;
+    // enrollment is for identities without a verified authenticator.
+    try {
+      if ((await this.platform.verifiedFactors()).length) this.challenge.set(true);
+    } catch {
+      /* stays in enroll mode; the setup guard already verified identity */
+    }
+  }
 
   async enroll(): Promise<void> {
     this.busy.set(true);
@@ -97,6 +115,24 @@ export class PlatformMfaComponent {
     try {
       await this.platform.verifyEnrollment(this.factorId, this.code());
       this.toast.success('Authenticator enrolled');
+      this.router.navigateByUrl('/platform-admin');
+    } catch (e) {
+      this.error.set(e instanceof Error ? e.message : 'Verification failed');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  async confirmChallenge(): Promise<void> {
+    if (!this.challenge()) return;
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const factors = await this.platform.verifiedFactors();
+      const newest = factors[0];
+      if (!newest) throw new Error('No authenticator found for this account.');
+      await this.platform.challengeVerified(newest.id, this.code());
+      this.toast.success('Welcome back.');
       this.router.navigateByUrl('/platform-admin');
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Verification failed');

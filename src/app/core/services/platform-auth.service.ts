@@ -84,4 +84,29 @@ export class PlatformAuthService {
     if (verifyError) throw verifyError;
     await this.reassessMfa();
   }
+
+  /** Verified TOTP factors already registered for this identity. */
+  async verifiedFactors(): Promise<{ id: string; friendlyName: string }[]> {
+    const { data, error } = await this.client.auth.mfa.listFactors();
+    if (error) throw error;
+    return (data?.totp ?? [])
+      .filter((f) => f.status === 'verified')
+      .map((f) => ({ id: f.id, friendlyName: f.friendly_name ?? '' }));
+  }
+
+  /**
+   * Re-login path: prove possession of an already-registered authenticator.
+   * A fresh session starts at aal1; a verified challenge raises it to aal2.
+   */
+  async challengeVerified(factorId: string, code: string): Promise<void> {
+    const { data: challenge, error } = await this.client.auth.mfa.challenge({ factorId });
+    if (error) throw error;
+    const { error: verifyError } = await this.client.auth.mfa.verify({
+      factorId,
+      challengeId: challenge.id,
+      code: code.replace(/\s/g, ''),
+    });
+    if (verifyError) throw verifyError;
+    await this.reassessMfa();
+  }
 }
