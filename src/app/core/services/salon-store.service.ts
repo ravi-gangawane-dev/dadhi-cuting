@@ -154,6 +154,7 @@ export class SalonStoreService {
     this.categories.set([]);
     this.expenseCategories.set([]);
     this.memberStatuses.set(new Map());
+    this.memberCapabilities.set(new Map());
     this.salonChoice = '';
     this.weeklyChart.set([]);
     this.summary.set({ ...emptySummary });
@@ -620,6 +621,38 @@ export class SalonStoreService {
         p_user: userId,
         p_role: role,
       });
+    });
+  }
+  /** Owner-facing capability grants per user (granular layer above roles). */
+  readonly memberCapabilities = signal<Map<string, string[]>>(new Map());
+  async loadMemberCapabilities(userId: string): Promise<string[]> {
+    const { data, error } = await this.data.client
+      .from('salon_permissions')
+      .select('permission')
+      .eq('salon_id', this.salon().id)
+      .eq('user_id', userId);
+    if (error) throw error;
+    const keys = ((data ?? []) as { permission: string }[]).map((r) => r.permission);
+    this.memberCapabilities.update((m) => new Map(m).set(userId, keys));
+    return keys;
+  }
+  async setMemberCapability(userId: string, permission: string, granted: boolean) {
+    await this.mutation(() =>
+      this.data.rpc('set_member_permission', {
+        p_salon: this.salon().id,
+        p_user: userId,
+        p_permission: permission,
+        p_granted: granted,
+      }),
+    );
+    this.memberCapabilities.update((map) => {
+      const next = new Map(map);
+      const keys = next.get(userId) ?? [];
+      next.set(
+        userId,
+        granted ? [...new Set([...keys, permission])] : keys.filter((k) => k !== permission),
+      );
+      return next;
     });
   }
   /** Owner-visible membership states for the employee login management UI. */

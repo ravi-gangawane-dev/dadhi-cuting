@@ -158,6 +158,14 @@ export interface SalonFeatureOverrideRow {
   flag_key: string;
   enabled: boolean;
 }
+export interface SalonPermissionRow {
+  salon_id: string;
+  user_id: string;
+  permission: string;
+  granted: boolean;
+  created_at: string;
+  updated_at: string;
+}
 export type Tables = {
   salons: SalonRow;
   user_profiles: {
@@ -189,6 +197,7 @@ export type Tables = {
   };
   feature_flags: FeatureFlagRow;
   salon_feature_overrides: SalonFeatureOverrideRow;
+  salon_permissions: SalonPermissionRow;
   platform_admins: UserAccountRow;
   platform_audit_logs: PlatformAuditRow;
 };
@@ -216,6 +225,15 @@ export interface Database {
       set_member_role: {
         Args: { p_salon: string; p_user: string; p_role: string };
         Returns: string;
+      };
+      set_member_permission: {
+        Args: {
+          p_salon: string;
+          p_user: string;
+          p_permission: string;
+          p_granted: boolean;
+        };
+        Returns: undefined;
       };
       feature_state: { Args: { p_salon: string }; Returns: Json };
       platform_feature_set: {

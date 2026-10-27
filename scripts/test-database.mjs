@@ -642,6 +642,77 @@ await check('a platform admin still reads any salon feature state', async () => 
   const adminView = await stateOf(superAdmin, thirdSalon);
   assert.equal(Object.keys(adminView).length, 15);
 });
+/* Granular per-staff capability grants layered on the role matrix.
+   Run against a fresh salon: the main salon's business day is already
+   locked by the closing tests, and grant semantics deserve a clean room. */
+await db.exec('reset role;');
+const capabilitySalon = await scalar('select public.provision_salon($1,$2)', [owner, 'Capability salon']);
+await db.exec(`insert into public.salon_members(salon_id,user_id,role) values('${capabilitySalon}','${staff}','employee'),('${capabilitySalon}','${reception}','receptionist');
+set role authenticated;`);
+const capEmployee = await scalar(
+  "insert into public.employees(salon_id,full_name) values($1,'Capability barber') returning id",
+  [capabilitySalon],
+);
+const capCustomer = await scalar(
+  "insert into public.customers(salon_id,full_name) values($1,'Capability customer') returning id",
+  [capabilitySalon],
+);
+const capService = await scalar(
+  "insert into public.services(salon_id,name,price,duration_minutes) values($1,'Capability service',150,30) returning id",
+  [capabilitySalon],
+);
+const capCreate =
+  'select public.create_service_entry($1,$2,$3,$4,0,\'\',$5)';
+await as(staff);
+await check('employee cannot create service entries without a capability grant', () =>
+  denied(capCreate, [capabilitySalon, capEmployee, null, JSON.stringify([{ service_id: capService, quantity: 1 }]), crypto.randomUUID()]),
+);
+await check('employee cannot read customer records without a grant', async () => {
+  const rows = await db.query('select id from public.customers where salon_id=$1', [capabilitySalon]);
+  assert.equal(rows.rows.length, 0);
+});
+await as(owner);
+await check('owner grants record_services to the employee', async () => {
+  await scalar('select public.set_member_permission($1,$2,$3,true)', [capabilitySalon, staff, 'record_services']);
+});
+await check('unknown capability rejected', () =>
+  denied('select public.set_member_permission($1,$2,$3,true)', [capabilitySalon, staff, 'unlimited']),
+);
+await check('owner membership cannot receive grants', () =>
+  denied('select public.set_member_permission($1,$2,$3,true)', [capabilitySalon, owner, 'record_services']),
+);
+await check('owner grant is audited', async () => {
+  const n = await scalar(
+    "select count(*) from public.audit_logs where salon_id='" +
+      capabilitySalon + "' and action='GRANT_record_services'",
+  );
+  assert.equal(Number(n), 1);
+});
+await as(staff);
+await check('granted employee creates a service entry', async () => {
+  await scalar(capCreate, [capabilitySalon, capEmployee, capCustomer, JSON.stringify([{ service_id: capService, quantity: 1 }]), crypto.randomUUID()]);
+});
+await check('granted employee can read the customers needed to record visits', async () => {
+  const rows = await db.query('select id from public.customers where salon_id=$1', [capabilitySalon]);
+  assert.ok(rows.rows.length > 0);
+});
+await check('granted employee still cannot manage staff accounts', () =>
+  denied('select public.set_member_active($1,$2,false)', [capabilitySalon, reception]),
+);
+await check('staff cannot write capability rows directly', () =>
+  denied(
+    "insert into public.salon_permissions(salon_id,user_id,permission,granted) values('" +
+      capabilitySalon + "','" + staff + "','manage_expenses',true)",
+  ),
+);
+await as(owner);
+await check('owner revokes the capability', async () => {
+  await scalar('select public.set_member_permission($1,$2,$3,false)', [capabilitySalon, staff, 'record_services']);
+});
+await as(staff);
+await check('revoked employee loses the added access again', () =>
+  denied(capCreate, [capabilitySalon, capEmployee, capCustomer, JSON.stringify([{ service_id: capService, quantity: 1 }]), crypto.randomUUID()]),
+);
 await as(owner);
 
 await db.close();

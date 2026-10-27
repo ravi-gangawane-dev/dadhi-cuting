@@ -6,6 +6,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { FileUploadComponent } from '../../../shared/components/file-upload/file-upload.component';
 import { SalonStoreService } from '../../../core/services/salon-store.service';
 import { TranslationService } from '../../../core/services/translation.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-employee-profile',
@@ -19,6 +20,7 @@ export class EmployeeProfileComponent {
   private readonly router = inject(Router);
   readonly store = inject(SalonStoreService);
   readonly i18n = inject(TranslationService);
+  private readonly toast = inject(ToastService);
 
   readonly employeeId = computed(() => {
     return this.route.snapshot.paramMap.get('id') || '';
@@ -52,11 +54,25 @@ export class EmployeeProfileComponent {
   >(null);
   readonly activityVisible = computed(() => this.store.currentUser().role === 'owner');
 
+  /**
+   * Granular capabilities layered on top of the member's role. Only shown to
+   * owners; toggles persist through the audited set_member_permission RPC.
+   */
+  readonly capabilityKeys = [
+    { key: 'record_services', label: 'Record visits & payments', desc: 'Create invoices and collect receipts' },
+    { key: 'manage_customers', label: 'Manage customers', desc: 'Add and edit customer records' },
+    { key: 'manage_appointments', label: 'Manage appointments', desc: 'Add, edit and cancel bookings' },
+    { key: 'manage_services', label: 'Manage services & pricing', desc: 'Edit the service catalog' },
+    { key: 'manage_expenses', label: 'Manage expenses', desc: 'Record shop expenses' },
+  ] as const;
+  readonly capabilities = signal<Map<string, boolean>>(new Map());
+
   constructor() {
     effect(() => {
       const emp = this.employee();
       if (!emp || !this.activityVisible()) {
         this.activity.set(null);
+        this.capabilities.set(new Map());
         return;
       }
       const memberId = emp.userId ? (this.store.memberStatuses().get(emp.userId)?.memberId ?? '') : '';
@@ -64,7 +80,37 @@ export class EmployeeProfileComponent {
         .memberActivity(emp.userId ?? '', memberId)
         .then((rows) => this.activity.set(rows))
         .catch(() => this.activity.set(null));
+      if (emp.userId) {
+        void this.store
+          .loadMemberCapabilities(emp.userId)
+          .then((keys) =>
+            this.capabilities.set(
+              new Map(this.capabilityKeys.map((c) => [c.key, keys.includes(c.key)])),
+            ),
+          )
+          .catch(() => this.capabilities.set(new Map()));
+      }
     });
+  }
+
+  /** Toggles one capability through the audited RPC; reverts on failure. */
+  async toggleCapability(event: Event, key: string): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const emp = this.employee();
+    if (!emp?.userId) return;
+    const granted = input.checked;
+    try {
+      await this.store.setMemberCapability(emp.userId, key, granted);
+      this.toast.success(
+        granted ? 'Capability granted' : 'Capability removed',
+        emp.name,
+      );
+    } catch (e) {
+      this.capabilities.set(
+        new Map(this.capabilities()).set(key, !granted),
+      );
+      this.toast.error(this.store.message(e));
+    }
   }
 
   viewAllServices(): void {

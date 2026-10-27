@@ -61,6 +61,22 @@
       <p class="dc-muted">No services recorded.</p>
     }
     @if (activityVisible()) {
+      <h2 class="dc-heading">Capabilities</h2>
+      <p class="dc-muted">Extra access beyond this role's standard permissions.</p>
+      @for (cap of capabilityKeys; track cap.key) {
+        <div class="dc-card dc-row justify-between">
+          <div class="dc-grow">
+            <strong>{{ cap.label }}</strong>
+            <p class="dc-muted">{{ cap.desc }}</p>
+          </div>
+          <input
+            type="checkbox"
+            [attr.aria-label]="cap.label"
+            [checked]="capabilities().get(cap.key) ?? false"
+            (change)="toggleCapability($event, cap.key)"
+          />
+        </div>
+      }
       <h2 class="dc-heading">Activity history</h2>
       @if (activity() === null) {
         <p class="dc-card dc-muted">Loading activity…</p>
