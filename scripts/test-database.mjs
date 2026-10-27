@@ -621,6 +621,27 @@ await check('restoring the flag re-enables self-onboarding', async () => {
   const s = await scalar('select public.create_my_salon($1)', ['Restored salon']);
   assert.ok(s);
 });
+/* feature_state is member-scoped: flag metadata is not readable cross-salon. */
+const thirdSalon = await scalar(
+  "select salon_id from public.salon_members where user_id='" + third + "' limit 1",
+);
+const stateOf = async (who, salonId) => {
+  await as(who);
+  const r = await scalar('select public.feature_state($1)', [salonId]);
+  await as(owner);
+  return r;
+};
+await check('a member sees the full feature state of the salon they belong to', async () => {
+  const ownState = await stateOf(third, thirdSalon);
+  assert.equal(Object.keys(ownState).length, 15);
+});
+await check('a stranger cannot probe another salon feature state', async () => {
+  assert.deepEqual(await stateOf(secondSalon, thirdSalon), {});
+});
+await check('a platform admin still reads any salon feature state', async () => {
+  const adminView = await stateOf(superAdmin, thirdSalon);
+  assert.equal(Object.keys(adminView).length, 15);
+});
 await as(owner);
 
 await db.close();

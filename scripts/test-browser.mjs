@@ -471,6 +471,55 @@ try {
   await check('mobile layout stays within viewport', async () =>
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)),
   );
+  await check('dashboard renders the last-7-days revenue trend', async () => {
+    // The fixture data is single-day by design; the weekly widget needs a
+    // multi-day server series, so this check interposes one deterministic
+    // report_summary response for the 7-day window the dashboard requests.
+    const series = Object.entries(
+      Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(day + 'T00:00:00Z');
+        d.setUTCDate(d.getUTCDate() - (6 - i));
+        return [d.toISOString().slice(0, 10), 100 * (i + 1)];
+      }),
+    );
+    const diag = { matched: [], continued: 0 };
+    await page.route('**/rpc/report_summary', async (route) => {
+      const request = route.request();
+      let body = {};
+      try { body = request.postDataJSON() ?? {}; } catch { /* hand other traffic on */ }
+      if (request.method() === 'POST' && body.p_from !== body.p_to) {
+        diag.matched.push((body.p_from ?? '?') + '..' + (body.p_to ?? '?'));
+        await route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            revenue: 2800,
+            services: 7,
+            visits: 7,
+            expenses: 0,
+            outstanding: 0,
+            methods: { cash: 2800 },
+            chart: series.map(([label, value]) => ({ label, value })),
+            topServices: [],
+            employees: [],
+          }),
+        });
+        return;
+      }
+      diag.continued++;
+      // Let the fixture's own super-route answer the today-window fetch.
+      await route.fallback();
+    });
+    try {
+      await page.reload();
+      await page.goto('http://127.0.0.1:4173/dashboard');
+      await page.getByText('Last 7 days', { exact: true }).waitFor();
+      const marks = await page.locator('svg polyline, svg polygon').count();
+      assert.ok(marks >= 1, 'trend line and area should render');
+      await page.screenshot({ path: screenshots + '/19_dashboard_chart.png', fullPage: true });
+    } finally {
+      await page.unroute('**/rpc/report_summary');
+    }
+  });
   // Additional visible data belongs only to this intercepted test API.
   db.notifications.push({
     id: crypto.randomUUID(),
