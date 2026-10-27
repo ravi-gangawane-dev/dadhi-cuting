@@ -13,14 +13,44 @@ function password(length = 12): string {
   return Array.from(bytes, (b) => chars[b % chars.length]).join('');
 }
 
+/**
+ * Browser CORS: the deployed site and local dev origin are the only ones that
+ * may call this function from JS. Browsers preflight every Edge call; without
+ * these headers the request is blocked before the function body ever runs.
+ */
+const ALLOWED_ORIGINS = new Set(['https://dadhi-cuting.netlify.app', 'http://localhost:4200']);
+
+// Reflect per request (set at the top of the serve handler).
+let requestOrigin: string | null = null;
+
+function corsHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'content-type': 'application/json', vary: 'Origin' };
+  if (requestOrigin && ALLOWED_ORIGINS.has(requestOrigin)) {
+    headers['access-control-allow-origin'] = requestOrigin;
+  }
+  return headers;
+}
+
 function fail(message: string, status = 403) {
   return new Response(JSON.stringify({ error: message }), {
     status,
-    headers: { 'content-type': 'application/json' },
+    headers: corsHeaders(),
   });
 }
 
 Deno.serve(async (req) => {
+  requestOrigin = req.headers.get('Origin');
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...corsHeaders(),
+        'access-control-allow-methods': 'POST, OPTIONS',
+        'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info, x-supabase-api-version',
+        'access-control-max-age': '86400',
+      },
+    });
+  }
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -58,7 +88,7 @@ Deno.serve(async (req) => {
   if (adminError || !adminRow) return fail('Not authorized');
 
   const respond = (payload: unknown) =>
-    new Response(JSON.stringify(payload), { headers: { 'content-type': 'application/json' } });
+    new Response(JSON.stringify(payload), { headers: corsHeaders() });
 
   const platformAudit = (actionText: string, entityType: string, entityId: string, details: unknown) =>
     admin.from('platform_audit_logs').insert({

@@ -510,8 +510,12 @@ export class SalonStoreService {
     const result = data as { error?: string; temporaryPassword?: string };
     if (result?.error) throw new Error(result.error);
     if (!result?.temporaryPassword) throw new Error('Account service did not return credentials.');
+    // The server linked the auth user onto the employee row; refresh so the
+    // list reflects "Login status: active" without a manual reload.
+    await this.refresh().catch(() => {});
     return { temporaryPassword: result.temporaryPassword };
   }
+
   /** Owner-assisted password recovery: issues a new temporary password. */
   async resetEmployeePassword(employeeUserId: string): Promise<{ temporaryPassword: string }> {
     const { data, error } = await this.data.client.functions.invoke('manage-employee-account', {
