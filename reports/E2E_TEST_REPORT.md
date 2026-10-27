@@ -78,6 +78,24 @@ Layout: 19 screens × 7 viewports (320, 360, 390, 430, 768, 1024, 1440) — no o
 | REVOCATION SMOKE anon invoke of `revoke_session` | **401 "Sign in required"** — platform JWT gate intact |
 | REVOCATION SMOKE non-owner admin `revoke_session` | **403 "Not authorized"** — action refused outside owner context |
 
+## 4b. Live salon-side matrix (27 October, driven in real browsers against the production site)
+
+Test salon `QA Verifier Salon 1792927749`, owner + staff via disposable test mailboxes.
+
+| Flow | Result |
+|---|---|
+| `create_salon` (admin via `platform-admin-ops`) | **OK** — salon, owner membership, starter categories provisioned; invite email delivered in ~60 s |
+| Owner invite accept → session → `/dashboard` | **OK** — (after rewriting the `redirect_to` fragment to the production origin; see BUG-06 report for the unset Site URL finding) |
+| Owner UI **Create login** → `manage-employee-account` `create` | **OK live** — staff auth user, `salon_members` row (`role: employee`), one-time temp password surfaced in the dialog; audit `CREATE_LOGIN` |
+| Staff login with the temp password | **OK live** — staff reaches `/dashboard` of the provisioned salon |
+| Owner **Suspend login** → `set_member_active` + chained `revoke_session` | **OK live** — row `active: false`; audit `SUSPEND_MEMBER` then `REVOKE_SESSION` |
+| Staff session killed server-side | **VERIFIED live** — refresh token minted seconds before suspension → `400 refresh_token_not_found`; previous password → `400 invalid_credentials`; mechanism = admin password rotation (no per-userId GoTrue admin logout exists on this host) |
+| Owner **Restore login** → re-issue temp password | **OK live** — audit `RESTORE_MEMBER` + `RESET_PASSWORD` |
+| Platform flag override `payments: false` (admin RPC) | **OK live** — owner-side `feature_state` turned `entitled: false`, override audited (`SALON_FEATURE`); staff was redirected from `/payments` (role layer also applies for plain employees) |
+| Override cleared (`p_enabled: null`) | **OK live** — state returns to inherit; override row removed |
+| Owner still views Payments while entitlement off | **By design** — "owner observes"; enforcement targets the staff/RPC layer (harness-verified) |
+| Edge CORS fix (BUG-06) | **VERIFIED live** — `OPTIONS` preflight now `204` with reflected origin; all browser-side invocations work |
+
 ## 5. Explicitly NOT executed (and why)
 
 | Item | Reason |
@@ -90,4 +108,4 @@ Layout: 19 screens × 7 viewports (320, 360, 390, 430, 768, 1024, 1440) — no o
 
 ## 6. Verdict
 
-All runnable suites are green: **53/53 DB, 59/59 unit, 15 browser checks, build OK**. The live project is deployed (migrations + Edge Functions ACTIVE) and the **platform control chain is verified live end to end** — bootstrapped test admin → login → verdict `true` → audit readable → 14 flags → TOTP enroll → AAL2 achieved. The remaining live-verification gap is the **salon-side matrix** (owner/employee sessions through the deployed Edge Functions and flag flips), listed in §5.
+All runnable suites are green: **53/53 DB, 59/59 unit, 15 browser checks, build OK**. The live project is deployed (migrations + Edge Functions ACTIVE) and the **platform control chain is verified live end to end** — bootstrapped test admin → login → verdict `true` → audit readable → 14 flags → TOTP enroll → AAL2 achieved. The **salon-side matrix is also now verified live** (§4b): salon provisioning, owner invite + accept, staff login creation through the Owner UI, suspension with real server-side session revocation, restore, and per-salon flag overrides — all driven against the production site in real browsers. Residual operational step: set the Supabase Auth **Site URL / Redirect URLs** to the production origin (see BUG-06 report) so invite/recovery emails deep-link correctly.

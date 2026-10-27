@@ -51,7 +51,7 @@ Date: 25 October 2026. Scope: the working tree as of this session (migrations `2
 ## 7. Pre-existing items accepted from the initial audit
 
 - R7 `email_for_mobile` enumeration surface (narrow, password-still-required) — unchanged, documented.
-- R10 session revocation on suspension — **now wired**: owner `revoke_session` action in `manage-employee-account` and deactivation-triggered revocation in `platform-admin-ops` `set_member` both call the GoTrue admin REST endpoint (`/auth/v1/admin/logout?scope=global`) with the service role; results are best-effort (`sessionsRevoked` flag) with RLS remaining the authoritative backstop. Live smoke: anon → 401, non-owner → 403.
+- R10 session revocation on suspension — **wired and live-verified (27 Oct)**: owner `revoke_session` (manage-employee-account) and centrally-requested deactivation (platform-admin-ops `set_member`) revoke sessions. GoTrue on this host exposes **no per-userId admin logout route** (`DELETE /admin/sessions/*`, `POST /admin/logout?scope=global` → `404`), so suspension falls back to an **admin password rotation to a random secret nobody receives**, which invalidates every refresh token (verified live: pre-suspension token → `refresh_token_not_found`, old password → `invalid_credentials`). Per-candidate outcomes are logged and audited; RLS remains the authoritative backstop.
 
 ## 8. Verdict
 

@@ -26,6 +26,16 @@ Date: 25 October 2026. Lists every defect found during this implementation cycle
 - `npm run build`: WARNING — initial bundle 595.04 kB vs 500 kB budget (a warning, not an error; pre-existing style plateau that grew with the new portal chunks which are all lazy).
 - Not a functional defect; recommended follow-up: raise the budget or extract more of the shared bundle.
 
+## Fixed during the live salon-side verification pass (27 Oct 2026)
+
+### BUG-06 — Edge Functions unusable from the browser (missing CORS)
+- **Symptom**: clicking **Create login** in the Owner UI failed with "Failed to send a request to the Edge Function"; a direct in-page `fetch` to `/functions/v1/*` also failed while `/rest/v1` and `/auth/v1` worked.
+- **Root cause**: browsers preflight cross-origin calls; both Edge functions had no `OPTIONS` handling and no `Access-Control-Allow-Origin` on responses — the preflight 400'd and the real call was blocked before the function body ran (while Node/service-side probes always worked).
+- **Fix**: both functions now answer `OPTIONS` with `204` and reflect an allowlisted Origin (`https://dadhi-cuting.netlify.app` + localhost dev) on every response, including errors; redeployed and re-driven live — the Owner UI created the staff login end to end.
+
+### Owner-invite redirect mis-configuration (operator setting, not code)
+- The deployment invite email linked **`redirect_to=http://localhost:3000`** — the Supabase Auth **Site URL** is still unset. Live session delivery was completed by rewriting the fragment to the production origin, but the operator should set Auth → **Site URL** = `https://dadhi-cuting.netlify.app` (and add it to **Redirect URLs**) in the dashboard.
+
 ## Fixed pre-existing (legacy) issues retained from reports
 
 - Hardcoded HTML dashboard amounts — already resolved before this cycle (real `report_summary` bindings), re-verified.
@@ -41,10 +51,11 @@ Date: 25 October 2026. Lists every defect found during this implementation cycle
 
 | ID | Description | Severity | Status |
 |---|---|---|---|
-| OPEN-01 | Fixture is synthetic: live-project validation of `feature_state`, employee login provisioning, MFA remains blocked on operator deploy steps (see `PRODUCTION_READINESS.md`). | Blocker (project-level, not code) | Tracked |
-| OPEN-02 | Session-token revocation on suspension — **FIXED this session**: `manage-employee-account` gained an owner-verified `revoke_session` action (GoTrue admin REST `POST /auth/v1/admin/logout?scope=global`, body `{userId}`), `platform-admin-ops` `set_member` revokes on deactivation, and the Owner UI chains revocation after suspending. Both functions redeployed; live smoke: anon invoke → 401, non-owner admin → 403 "Not authorized". Best-effort with `sessionsRevoked` flag; RLS remains the authoritative backstop. | Low | **Closed** |
-| OPEN-03 | Temporary-password change enforcement is UI-driven (`must_change_password` metadata); Supabase has no native force-change. | Low | Documented; owner reset path + minimum-password config mitigate |
+| OPEN-01 | Fixture is synthetic: live-project validation of `feature_state`, employee login provisioning, MFA remains blocked on operator deploy steps (see `PRODUCTION_READINESS.md`). | Blocker (project-level, not code) | Tracked — largely cleared by the 27 Oct live pass |
+| OPEN-02 | Session-token revocation on suspension — **FIXED and live-verified (27 Oct)**: `manage-employee-account` `revoke_session` (owner-verified) + `platform-admin-ops` `set_member` deactivation revoke sessions. GoTrue on this host exposes **no per-userId admin logout shape** (all candidate REST routes `404`), so the guaranteed mechanism is an **admin password rotation to a random server-held secret** — empirically verified live: a staffer's refresh token minted seconds before suspension returns `400 refresh_token_not_found` and their previous password returns `400 invalid_credentials`. Nobody receives the rotated secret; after a restore the owner issues a new temp password (audited `RESET_PASSWORD`). | Medium | **Closed (live-verified)** |
+| OPEN-03 | Temporary-password change enforcement is UI-driven (`must_change_password` metadata); Supabase has no native force-change. | Low | Documented; live-drive confirmed staff reach the dashboard with the temp password (no forced-change screen); owner reset path + minimum-password config mitigate |
 | OPEN-04 | Initial bundle budget warning (see BUG-04). | Cosmetic | Backlog |
+| OPEN-05 | Two accounts in one browser profile share a single storage key; one account's token refresh can replace the other's stored session (observed during the live pass with owner + staff tabs on the same machine). Device-profile separation avoids the collision; single-account devices are the product norm. | Low | Documented |
 
 ## Regression evidence
 

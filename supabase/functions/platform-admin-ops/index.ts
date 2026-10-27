@@ -197,19 +197,36 @@ Deno.serve(async (req) => {
     // A centrally suspended member must lose their open sessions as well.
     let sessionsRevoked = false;
     if (active === false) {
-      try {
-        const revocation = await fetch(`${url}/auth/v1/admin/logout?scope=global`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            apikey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userId }),
-        });
-        sessionsRevoked = revocation.ok;
-      } catch {
-        /* RLS containment already applies; revocation is belt-and-braces */
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const adminHeader = { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey };
+      for (const variant of [
+        { name: 'DELETE /admin/sessions/{userId}', method: 'DELETE', path: `/auth/v1/admin/sessions/${userId}`, body: '' },
+        { name: 'DELETE /admin/sessions?user_id', method: 'DELETE', path: `/auth/v1/admin/sessions?user_id=${userId}`, body: '' },
+        { name: 'POST /admin/logout?scope=global', method: 'POST', path: '/auth/v1/admin/logout?scope=global', body: JSON.stringify({ userId }) },
+      ]) {
+        try {
+          const revocation = await fetch(`${url}${variant.path}`, {
+            method: variant.method,
+            headers: { ...adminHeader, 'Content-Type': 'application/json' },
+            body: variant.body || undefined,
+          });
+          if (revocation.ok) {
+            sessionsRevoked = true;
+            break;
+          }
+        } catch {
+          /* falls through to the rotation below */
+        }
+      }
+      if (!sessionsRevoked) {
+        // Guaranteed revocation shape: a password the holder never receives
+        // invalidates every refresh token (GoTrue rejected all per-userId
+        // logout routes here; rotation is verified to revoke).
+        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        const rotated = Array.from(bytes, (b) => chars[b % chars.length]).join('');
+        const { error: rotationError } = await admin.auth.admin.updateUserById(userId, { password: rotated });
+        sessionsRevoked = !rotationError;
       }
     }
     await platformAudit('SET_MEMBER', 'salon_members', member.id, { active, role });

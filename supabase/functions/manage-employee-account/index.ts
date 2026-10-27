@@ -202,7 +202,9 @@ Deno.serve(async (req) => {
   if (action === 'revoke_session') {
     // Suspends a revoked staff login immediately: kills every refresh token
     // the member holds, not just the row visibility (RLS remains the
-    // backstop for access, this removes open browsing sessions).
+    // backstop for access, this removes open browsing sessions). GoTrue
+    // exposes the per-user logout in different shapes across versions, so
+    // each candidate is attempted in order and the outcome is audited.
     const userId = body.userId as string | undefined;
     if (!userId) return fail('User is required', 400);
     const { data: member, error: memberError } = await admin
@@ -213,25 +215,54 @@ Deno.serve(async (req) => {
       .single();
     if (memberError || !member) return fail('Member not found', 404);
     if (member.role === 'owner') return fail('Platform involvement is required to revoke an owner');
+    const adminHeader = { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey };
+    const attempts: Array<{ variant: string; status: number | string; detail: string }> = [];
     let sessionsRevoked = false;
-    let revocationDetail = '';
-    try {
-      const revocation = await fetch(`${url}/auth/v1/admin/logout?scope=global`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${serviceKey}`,
-          apikey: serviceKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId }),
-      });
-      sessionsRevoked = revocation.ok;
-      if (!revocation.ok) revocationDetail = (await revocation.text()).slice(0, 200);
-    } catch (e) {
-      revocationDetail = String(e).slice(0, 200);
+    for (const variant of [
+      { name: 'DELETE /admin/sessions/{userId}', method: 'DELETE', path: `/auth/v1/admin/sessions/${userId}`, body: undefined as string | undefined },
+      { name: 'DELETE /admin/sessions?user_id', method: 'DELETE', path: `/auth/v1/admin/sessions?user_id=${userId}`, body: undefined as string | undefined },
+      { name: 'POST /admin/logout?scope=global', method: 'POST', path: '/auth/v1/admin/logout?scope=global', body: JSON.stringify({ userId }) },
+    ]) {
+      try {
+        const revocation = await fetch(`${url}${variant.path}`, {
+          method: variant.method,
+          headers: { ...adminHeader, 'Content-Type': 'application/json' },
+          body: variant.body,
+        });
+        const detail = revocation.ok ? '' : (await revocation.text()).slice(0, 160);
+        attempts.push({ variant: variant.name, status: revocation.status, detail });
+        if (revocation.ok) {
+          sessionsRevoked = true;
+          break;
+        }
+      } catch (e) {
+        attempts.push({ variant: variant.name, status: 'network', detail: String(e).slice(0, 160) });
+      }
     }
-    await audit('salon_members', member.id, 'REVOKE_SESSION');
-    return respond({ ok: true, sessionsRevoked, revocationDetail });
+    if (!sessionsRevoked) {
+      // Hosts whose GoTrue has no per-userId logout shape: rotating the
+      // password to a random server-held secret invalidates every refresh
+      // token (empirically verified: `refresh_token_not_found` afterwards).
+      // Nobody receives the rotated secret; after a restore the owner issues
+      // a fresh temporary password through the normal reset flow.
+      const rotated = password(16);
+      const { error: rotationError } = await admin.auth.admin.updateUserById(userId, { password: rotated });
+      attempts.push({
+        variant: 'admin password rotation',
+        status: rotationError ? 'auth-error' : 'ok',
+        detail: rotationError ? String(rotationError.message).slice(0, 160) : '',
+      });
+      if (!rotationError) sessionsRevoked = true;
+    }
+    await admin.from('audit_logs').insert({
+      salon_id: salonId,
+      actor_user_id: callerId,
+      action: 'REVOKE_SESSION',
+      entity_type: 'salon_members',
+      entity_id: member.id,
+    });
+    console.log('revoke_session attempts', JSON.stringify({ user: userId, revocationsRevoked: sessionsRevoked, attempts }));
+    return respond({ ok: true, sessionsRevoked, attempts });
   }
 
   return fail('Unknown action', 400);

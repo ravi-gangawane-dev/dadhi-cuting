@@ -1,10 +1,10 @@
 # DadhiCutting — Production Readiness Report
 
-Date: 25 October 2026. Branch `main`, all changes uncommitted on top of `1a08313`.
+Date: 27 October 2026 (live salon-side pass complete). Branch `main` pushed to `origin`.
 
-## Overall verdict: **Deployed and verified — test admin live · remaining: real-admin bootstrap + salon-side verification + hosting deploy**
+## Overall verdict: **Deployed and live-verified — platform chain (AAL2) + salon-side matrix (owner → staff → suspension/revocation → flags). Remaining: real-admin swap + Auth Site URL setting**
 
-The Super Admin system, ownership flows, employee account management, role/permission enforcement, and dynamic feature flags are implemented (**53/53** offline checks, 59/59 unit, 15 browser checks, build green), **applied to the live project** (migrations + Edge Functions ACTIVE), **and end-to-end verified live with a test Super Admin**: bootstrapped identity → login with the temporary password → `is_platform_admin` verdict `true` → platform audit readable through RLS → 14 seeded flags → TOTP enroll → challenge/verify → session assurance `aal2`. Only the real-admin bootstrap, salon-side E2E passes, and the hosting deploy remain.
+The Super Admin system, ownership flows, employee account management, role/permission enforcement, and dynamic feature flags are implemented (**53/53** offline checks, 59/59 unit, 15 browser checks, build green), **applied to the live project** (migrations + Edge Functions ACTIVE), **platform chain verified live with a test Super Admin** (AAL2 achieved), **and the salon-side matrix verified live in real browsers (27 Oct)**: salon provisioning, owner invite accept, staff login creation through the Owner UI, suspension with verified server-side session revocation, restore + re-issue, and per-salon flag overrides. Only the real-admin swap and two dashboard settings remain (below).
 
 ## 1. Go-live checklist (operator, in order)
 
@@ -15,23 +15,24 @@ The Super Admin system, ownership flows, employee account management, role/permi
 | 3 | Deploy Edge Functions | `supabase functions deploy manage-employee-account`; `supabase functions deploy platform-admin-ops` | Low | Delete function | ✅ **Deployed ACTIVE** (verify_jwt on) |
 | 4 | Provision the Super Admin | `npm run bootstrap:admin` (operator's own env credentials; interactive; audited) | Controlled: requires typed project-ref confirmation | Remove row from `platform_admins` | ✅ **Executed for test identity** `super-admin.test@dadhi-testing.test` (audit row written); swap to the real admin or re-run for it |
 | 5 | First login + MFA enrollment | Visit app, sign in, enroll TOTP at `/platform-admin/mfa` | none | — | ✅ **Verified live** via the app's own supabase-js path: password → TOTP enroll → challenge/verify → assurance `aal2` |
-| 6 | Verify the matrix live | Create a salon, a staff login, flip one flag per salon (expect denial), flip back | Low | Flag flip-back | ⬜ recommended as a manual pass in the portal using the test admin (platform surfaces verified live through probes; salon-side flows need a browser session) |
-| 7 | Netlify deploy of the new build | Existing pipeline (`netlify.toml` SPA rules already cover the new routes) | Low | Previous deploy | ⬜ |
+| 6 | Verify the matrix live | Create a salon, a staff login, flip one flag per salon (expect denial), flip back | Low | Flag flip-back | ✅ **Driven live in real browsers (27 Oct)** — salon + owner via `create_salon`, invite accept, staff login via Owner UI, suspension with **verified server-side session revocation**, restore + re-issue, per-salon `payments` override set/cleared (see `E2E_TEST_REPORT.md` §4b) |
+| 7 | Netlify deploy of the new build | Existing pipeline (`netlify.toml` SPA rules already cover the new routes) | Low | Previous deploy | ✅ **Published** — `origin/main` auto-deploys; production site `https://dadhi-cuting.netlify.app` serves the current build (bundle hash matches) |
 
 ## 2. Feature readiness matrix
 
 | Capability | Code | Offline proof | Live proof |
 |---|---|---|---|
-| Platform admin identity + MFA gate | ✔ | ✔ (harness + unit) | Verdict RPC smoke-tested live (anon denied); AAL2 flow pending steps 4–5 |
-| Platform portal (dashboard/salons/salon detail/users/features/audit/settings) | ✔ | ✔ (UI/typed queries; unit) | Pending steps 4–6 |
-| Super-Admin-only flag control (registry + salon overrides) | ✔ | ✔ (harness) | RPC exposure verified; role flow pending step 6 |
-| Flag enforcement in policies + financial RPCs | ✔ | ✔ (harness) | Live (policies/RPCs applied by migration push) |
-| Owner membership management (suspend/restore/role) | ✔ | ✔ (harness) | Live (applied); owner-session test pending step 6 |
-| Employee login provisioning (create + temp password + first-login change, reset) | ✔ | Partially (types/flows; Edge not deployed) | **Deployed ACTIVE**; live E2E pending step 6 |
+| Platform admin identity + MFA gate | ✔ | ✔ (harness + unit) | ✅ **Live** — AAL2 flow driven in the browser with the test admin |
+| Platform portal (dashboard/salons/salon detail/users/features/audit/settings) | ✔ | ✔ (UI/typed queries; unit) | ✅ **Live** — portal pages loaded with the test admin |
+| Super-Admin-only flag control (registry + salon overrides) | ✔ | ✔ (harness) | ✅ **Live** — per-salon `payments` override set + cleared via RPC, owner `feature_state` flipped |
+| Flag enforcement in policies + financial RPCs | ✔ | ✔ (harness) | ✅ Live — override reflected in `feature_state`; RPC gate harness-verified |
+| Owner membership management (suspend/restore/role) | ✔ | ✔ (harness) | ✅ **Live** — suspend + restore driven in the Owner UI, audited |
+| Employee login provisioning (create + temp password + first-login change, reset) | ✔ | ✔ (harness; Edge after CORS fix) | ✅ **Live** — Create login + reset password through the Owner UI; staff signed in |
 | Accountant role (read-only financial) | ✔ | ✔ (harness) | Live (constraint + policies applied) |
 | Suspension → `/account-locked` routing | ✔ | ✔ | Live (applied) |
 | Salon onboarding hardening | ✔ | ✔ (harness) | Live (applied) |
-| Bootstrap tooling | ✔ | Syntax-verified only (by design) | Pending step 4 |
+| Session revocation on suspension | ✔ | Best-effort documented | ✅ **Live-verified** — pre-suspension token dies (`refresh_token_not_found`), old password rejected |
+| Bootstrap tooling | ✔ | Syntax-verified only (by design) | ✅ Test identity bootstrapped live |
 
 ## 3. Operational notes
 
@@ -51,9 +52,11 @@ The test Super Admin (`super-admin.test@dadhi-testing.test`) and its one-time te
 
 ## 5. Known limitations (non-blocking)
 
-1. ~~Token-level revocation for suspended users~~ — **resolved**: owner `revoke_session` + platform `set_member` deactivation now revoke GoTrue sessions globally (best-effort; RLS containment remains the backstop).
-2. Force-change of temporary staff passwords is UX-enforced, not native (documented).
+1. ~~Token-level revocation for suspended users~~ — **resolved and live-verified (27 Oct)**: suspension revokes sessions via admin password rotation (no per-userId GoTrue route exists; mechanism proof in `E2E_TEST_REPORT.md` §4b).
+2. Force-change of temporary staff passwords is UX-enforced, not native (documented; live-drive confirmed staff reach the dashboard with the temp password).
 3. Initial-bundle budget warning (595 kB vs 500 kB) — cosmetic, pre-existing trend.
+4. Supabase Auth **Site URL / Redirect URLs** still unset (invite links pointed at `localhost:3000`) — operator should set them to `https://dadhi-cuting.netlify.app` in the dashboard.
+5. Two accounts in one browser profile can replace each other's stored session (shared storage key) — device-profile separation recommended; documented as OPEN-05.
 
 ## 6. What "done" will mean after steps 4–6
 
