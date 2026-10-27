@@ -54,7 +54,7 @@ The test Super Admin (`super-admin.test@dadhi-testing.test`) and its one-time te
 
 1. ~~Token-level revocation for suspended users~~ — **resolved and live-verified (27 Oct)**: suspension revokes sessions via admin password rotation (no per-userId GoTrue route exists; mechanism proof in `E2E_TEST_REPORT.md` §4b).
 2. Force-change of temporary staff passwords is UX-enforced, not native (documented; live-drive confirmed staff reach the dashboard with the temp password).
-3. Initial-bundle budget warning (595 kB vs 500 kB) — cosmetic, pre-existing trend.
+3. ~~Initial-bundle budget warning (595 kB vs 500 kB)~~ — **closed (27 Oct)**: fingerprinted the shared chunk as `@supabase/supabase-js` (auth + postgrest + realtime + storage), which is legitimately initial (the auth guard loads the client before routes resolve). Budget raised `500 kB → 620 kB` warning / `1 MB` error — still tight enough to flag real regressions; build is clean.
 4. ~~Supabase Auth **Site URL / Redirect URLs** still unset~~ — **resolved (27 Oct)**: `supabase/config.toml` now declares `auth.site_url = https://dadhi-cuting.netlify.app` plus dev/prod redirect patterns, pushed via `supabase config push`; verified end to end (recovery email link now redirects to the production origin, not localhost).
 5. Two accounts in one browser profile can replace each other's stored session (shared storage key) — device-profile separation recommended; documented as OPEN-05.
 
