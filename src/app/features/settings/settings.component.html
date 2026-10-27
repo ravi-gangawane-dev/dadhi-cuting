@@ -1,5 +1,35 @@
 <app-header title="Settings" [showBack]="true" backUrl="/dashboard" />
 <div class="dc-content">
+  @if (store.memberships().length > 1) {
+    <details class="dc-card" [open]="true">
+      <summary>{{ i18n.isMarathi() ? 'तुमची सलून' : 'Your salons' }}</summary>
+      <div class="dc-stack mt-4">
+        @for (membership of store.memberships(); track membership.salonId) {
+          <div class="dc-row">
+            <div class="dc-grow">
+              <strong>{{ membership.salonName }}</strong>
+              <p class="dc-muted">
+                {{ membership.role }}
+                {{ membership.active ? '' : (i18n.isMarathi() ? '· निलंबित' : '· suspended') }}
+              </p>
+            </div>
+            @if (membership.active && membership.salonId === store.salon().id) {
+              <span class="dc-muted">Current</span>
+            } @if (membership.active && membership.salonId !== store.salon().id) {
+              <button
+                type="button"
+                class="dc-button dc-outline !py-1"
+                [disabled]="store.loading()"
+                (click)="activate(membership.salonId)"
+              >
+                {{ i18n.isMarathi() ? 'वापरा' : 'Switch' }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </details>
+  }
   @for (item of visibleBusinessItems(); track item.label) {
     <button class="dc-card dc-row text-left" (click)="navigateTo(item.route)">
       <app-icon [name]="item.icon" /><strong class="dc-grow">{{

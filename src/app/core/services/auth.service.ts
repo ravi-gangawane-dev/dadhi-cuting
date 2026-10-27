@@ -119,4 +119,11 @@ export class AuthService {
     if (error) throw error;
     this.recovery.set(false);
   }
+  /** Clears the provisioning hint once the visitor replaced a temp password. */
+  async clearMustChangePassword() {
+    const { error } = await this.client.auth.updateUser({
+      data: { must_change_password: false },
+    });
+    if (error) throw error;
+  }
 }

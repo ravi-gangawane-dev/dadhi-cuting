@@ -30,6 +30,8 @@ export interface Employee {
   active: boolean;
   /** Auth account linked by the Owner through the server-side provisioning flow. */
   userId: string | null;
+  /** Uploaded photo (salon-private bucket), when the owner added one. */
+  avatarUrl: string | null;
   commissionRate: number; // e.g. 30 for 30%
   servicesToday: number;
   salesToday: number; // In Rupees
@@ -154,6 +156,14 @@ export interface NotificationItem {
   group: 'today' | 'earlier';
   isRead: boolean;
   type: 'payment' | 'expense' | 'closing' | 'customer' | 'pending';
+}
+
+/** One salon membership of the signed-in account (multi-salon owners included). */
+export interface UserMembership {
+  salonId: string;
+  salonName: string;
+  role: string;
+  active: boolean;
 }
 
 export interface DashboardKPIs {

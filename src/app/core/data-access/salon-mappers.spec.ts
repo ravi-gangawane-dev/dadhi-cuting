@@ -1,5 +1,26 @@
-import { mapEntry, mapPayments } from './salon-mappers';
-import { EntryRow, PaymentRow, ItemRow } from './database.types';
+import { mapEmployee, mapEntry, mapPayments } from './salon-mappers';
+import { EmployeeRow, EntryRow, PaymentRow, ItemRow } from './database.types';
+
+describe('Employee mapping', () => {
+  it('carries the uploaded photo url for the owner UI', () => {
+    const row: EmployeeRow = {
+      id: 'employee',
+      salon_id: 'salon',
+      user_id: null,
+      full_name: 'Sandip',
+      phone: '',
+      designation: 'barber',
+      avatar_url: 'https://example.test/employees/photo.png',
+      active: true,
+      commission_rate: 30,
+      created_at: '2026-10-01T00:00:00Z',
+      updated_at: '2026-10-01T00:00:00Z',
+    };
+    expect(mapEmployee(row, [], '2026-10-27').avatarUrl).toBe(
+      'https://example.test/employees/photo.png',
+    );
+  });
+});
 describe('Invoice and receipt mapping', () => {
   const entry: EntryRow = {
     id: 'invoice',

@@ -11,6 +11,7 @@ import {
   Salon,
   SalonService,
   ServiceEntry,
+  UserMembership,
 } from '../../shared/models/salon.models';
 import { SalonDataService } from '../data-access/salon-data.service';
 import { CategoryRow, ReportSummary } from '../data-access/database.types';
@@ -61,6 +62,10 @@ export class SalonStoreService {
   readonly serviceEntries = signal<ServiceEntry[]>([]);
   readonly payments = signal<PaymentTransaction[]>([]);
   readonly expenses = signal<Expense[]>([]);
+  /** Every salon membership of the signed-in user, for multi-salon switching. */
+  readonly memberships = signal<UserMembership[]>([]);
+  /** Completed-revenue trend for the dashboard chart (last 7 salon dates). */
+  readonly weeklyChart = signal<{ label: string; value: number }[]>([]);
   readonly dailyClosing = signal<DailyClosingRecord>({ ...emptyClosing });
   readonly closingHistory = signal<DailyClosingRecord[]>([]);
   readonly appointments = signal<Appointment[]>([]);
@@ -110,6 +115,7 @@ export class SalonStoreService {
     () => this.notifications().filter((n) => !n.isRead).length,
   );
   private loadedUser = '';
+  private salonChoice = '';
   private loadPromise: Promise<void> | null = null;
   private generation = 0;
   constructor() {
@@ -147,6 +153,9 @@ export class SalonStoreService {
     this.closingHistory.set([]);
     this.categories.set([]);
     this.expenseCategories.set([]);
+    this.memberStatuses.set(new Map());
+    this.salonChoice = '';
+    this.weeklyChart.set([]);
     this.summary.set({ ...emptySummary });
     this.dailyClosing.set({ ...emptyClosing });
   }
@@ -169,7 +178,12 @@ export class SalonStoreService {
           .eq('user_id', user.id)
           .order('created_at');
         if (error) throw error;
-        const active = (members ?? []).filter((m) => m.active);
+        const allMemberships = (members ?? []) as {
+          salon_id: string;
+          role: string;
+          active: boolean;
+        }[];
+        const active = allMemberships.filter((m) => m.active);
         if (!active.length) {
           const { data: ownProfile, error: ownProfileError } = await this.data.client
             .from('user_profiles')
@@ -186,7 +200,31 @@ export class SalonStoreService {
           this.loadedUser = user.id;
           return;
         }
-        const membership = active[0];
+        if (generation !== this.generation || this.auth.session()?.user.id !== user.id) return;
+        // Salon names for every membership the user can still read (RLS hides
+        // salons of suspended memberships; those fall back to a neutral label).
+        const { data: nameRows } = await this.data.client
+          .from('salons')
+          .select('id,name')
+          .in('id', [...new Set(allMemberships.map((m) => m.salon_id))]);
+        const names = new Map(((nameRows ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]));
+        this.memberships.set(
+          allMemberships.map((m) => ({
+            salonId: m.salon_id,
+            salonName: names.get(m.salon_id) ?? 'Salon',
+            role: m.role,
+            active: m.active,
+          })),
+        );
+        // Active salon selection: an in-session choice or the persisted choice
+        // wins; otherwise the first membership keeps today's behaviour stable.
+        const chosen = active.find(
+          (m) =>
+            m.salon_id === this.salonChoice ||
+            m.salon_id === localStorage.getItem(`dadhi.salon.${user.id}`),
+        );
+        const membership = chosen ?? active[0];
+        this.salonChoice = membership.salon_id;
         const { data: salon, error: salonError } = await this.data.client
           .from('salons')
           .select('*')
@@ -231,6 +269,17 @@ export class SalonStoreService {
     })();
     return this.loadPromise;
   }
+  /** Switch the active salon (multi-salon owners); reloads all salon-scoped state. */
+  async switchSalon(salonId: string): Promise<void> {
+    const user = this.auth.session()?.user;
+    if (!user) throw new Error('Sign in to continue.');
+    const target = this.memberships().find((m) => m.salonId === salonId && m.active);
+    if (!target) throw new Error('That salon is not active for your account.');
+    if (salonId === this.salon().id) return;
+    localStorage.setItem(`dadhi.salon.${user.id}`, salonId);
+    this.clear();
+    await this.ensureLoaded();
+  }
   async refresh() {
     const s = this.salon().id;
     if (!s) return;
@@ -265,6 +314,15 @@ export class SalonStoreService {
       this.data.report(s, this.today(), this.today()),
     ]);
     if (generation !== this.generation || this.salon().id !== s) return;
+    // Dashboard revenue trend: server aggregate over the last 7 salon dates
+    // (single bounded RPC reusing report_summary's exact revenue semantics).
+    void this.data
+      .report(s, shiftDays(this.today(), -6), this.today())
+      .then((week) => {
+        if (generation === this.generation && this.salon().id === s)
+          this.weeklyChart.set(week.chart ?? []);
+      })
+      .catch(() => {});
     const tz = this.salon().timezone;
     const mapped = entries
       .map((e) => mapEntry(e, items, payments, employees, customers, tz))
@@ -565,19 +623,20 @@ export class SalonStoreService {
     });
   }
   /** Owner-visible membership states for the employee login management UI. */
-  readonly memberStatuses = signal<Map<string, { active: boolean; role: string }>>(new Map());
+  readonly memberStatuses = signal<
+    Map<string, { active: boolean; role: string; memberId: string }>
+  >(new Map());
   async loadMemberStatuses(): Promise<void> {
     const { data, error } = await this.data.client
       .from('salon_members')
-      .select('user_id,role,active')
+      .select('id,user_id,role,active')
       .eq('salon_id', this.salon().id);
     if (error) throw error;
     this.memberStatuses.set(
       new Map(
-        ((data ?? []) as { user_id: string; role: string; active: boolean }[]).map((m) => [
-          m.user_id,
-          { active: m.active, role: m.role },
-        ]),
+        ((data ?? []) as { id: string; user_id: string; role: string; active: boolean }[]).map(
+          (m) => [m.user_id, { active: m.active, role: m.role, memberId: m.id }],
+        ),
       ),
     );
   }
@@ -839,4 +898,30 @@ export class SalonStoreService {
       total: result.total,
     };
   }
+  /**
+   * Owner-facing activity trail for one staff member: actions they performed
+   * plus privileged actions recorded against their employee/membership rows.
+   * Reading audit history is an owner-only grant (audit_read policy).
+   */
+  async memberActivity(userId: string, entityId: string): Promise<
+    { action: string; created_at: string; entity_type: string }[]
+  > {
+    const { data, error } = await this.data.client
+      .from('audit_logs')
+      .select('action,created_at,entity_type')
+      .or(
+        `actor_user_id.eq.${userId},and(entity_type.eq.employees,entity_id.eq.${entityId}),and(entity_type.eq.salon_members,entity_id.eq.${entityId})`,
+      )
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (error) throw error;
+    return data ?? [];
+  }
+}
+
+/** Calendar-date arithmetic on YYYY-MM-DD strings (UTC exact day shifts). */
+function shiftDays(isoDate: string, delta: number): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
 }

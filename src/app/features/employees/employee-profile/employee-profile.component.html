@@ -2,9 +2,22 @@
 <div class="dc-content">
   @if (employee(); as emp) {
     <section class="text-center">
-      <div class="dc-avatar dc-avatar-large">{{ emp.initials }}</div>
+      @if (emp.avatarUrl) {
+        <img
+          [src]="emp.avatarUrl"
+          [alt]="emp.name"
+          width="72"
+          height="72"
+          class="mx-auto rounded-full object-cover"
+        />
+      } @else {
+        <div class="dc-avatar dc-avatar-large">{{ emp.initials }}</div>
+      }
       <h2 class="dc-page-title">{{ emp.name }}</h2>
       <p class="dc-muted">{{ emp.roleDisplay }} · {{ emp.active ? 'Active' : 'Archived' }}</p>
+      <div class="mt-2 max-w-xs mx-auto">
+        <app-file-upload kind="employees" [recordId]="emp.id" label="Employee photo" />
+      </div>
     </section>
     <div class="grid grid-cols-3 gap-2">
       <div class="dc-card text-center !px-2">
@@ -46,6 +59,21 @@
       </div>
     } @empty {
       <p class="dc-muted">No services recorded.</p>
+    }
+    @if (activityVisible()) {
+      <h2 class="dc-heading">Activity history</h2>
+      @if (activity() === null) {
+        <p class="dc-card dc-muted">Loading activity…</p>
+      } @else if (activity()!.length === 0) {
+        <p class="dc-card dc-muted">No recorded activity yet.</p>
+      } @else {
+        @for (row of activity(); track row.created_at) {
+          <div class="dc-card dc-row justify-between">
+            <strong>{{ row.action }}</strong>
+            <span class="dc-muted">{{ row.created_at.slice(0, 16).replace('T', ' ') }}</span>
+          </div>
+        }
+      }
     }
     <a routerLink="/employees" class="dc-button">Manage employee</a>
   } @else {

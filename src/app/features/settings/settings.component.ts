@@ -82,6 +82,16 @@ export class SettingsComponent {
     this.router.navigateByUrl(route);
   }
 
+  /** Multi-salon owners: make the chosen membership the active workspace. */
+  async activate(salonId: string): Promise<void> {
+    try {
+      await this.store.switchSalon(salonId);
+      this.toast.success(this.store.salon().name, 'Switched salon');
+    } catch (e) {
+      this.toast.error(this.store.message(e));
+    }
+  }
+
   readonly fullName = signal(this.store.currentUser().name);
   readonly selectedTheme = signal<'light' | 'dark'>('light');
   readonly selectedLanguage = signal<'en' | 'mar'>('en');

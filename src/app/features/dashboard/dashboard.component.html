@@ -16,6 +16,30 @@
     </p>
   </div>
 }
+@if (mustChangePassword()) {
+  <div class="dc-content">
+    <form class="dc-card dc-summary dc-stack" (ngSubmit)="completePasswordChange()">
+      <strong>Change your temporary password</strong>
+      <p class="dc-muted">
+        Your account was set up with a one-time password. Choose your own now —
+        it is never stored or shown to anyone again.
+      </p>
+      <label class="dc-field"
+        >New password<input
+          type="password"
+          name="newPassword"
+          [ngModel]="newPassword()"
+          (ngModelChange)="newPassword.set($event)"
+          autocomplete="new-password"
+          minlength="8"
+          required
+      /></label>
+      <button type="submit" class="dc-button" [disabled]="changingPassword()">
+        Update password
+      </button>
+    </form>
+  </div>
+}
 <div class="dc-content">
   <div>
     <p class="dc-muted">Welcome back</p>
@@ -26,6 +50,9 @@
     <p>Today's revenue</p>
     <p class="dc-amount">₹{{ store.todayRevenue().toLocaleString('en-IN') }}</p>
   </section>
+  @if (store.weeklyChart().length > 1) {
+    <app-chart-container title="Last 7 days" [data]="store.weeklyChart()" />
+  }
   <div class="dc-grid">
     <div class="dc-card">
       <app-icon name="scissors" />
