@@ -430,7 +430,7 @@ await check('flag registry reports implemented and planned features', async () =
   assert.equal(st.payments.available, true);
   assert.equal(st.inventory.available, false);
   assert.equal(st.multi_branch.lifecycle, 'planned');
-  assert.equal(await scalar('select count(*) from public.feature_flags'), 14);
+  assert.equal(await scalar('select count(*) from public.feature_flags'), 15);
 });
 await check('non platform-admin cannot set flags, overrides or read platform audit', async () => {
   await denied('select public.platform_feature_set($1,$2,$3)', ['services', false, 'beta']);
@@ -588,6 +588,40 @@ await check('platform audit records every privileged change', async () => {
 await as(owner);
 await check('lifecycle day-lock still governs closing after flag changes', () =>
   denied('select public.close_business_day($1,$2,0,0)', [salon, today]));
+
+/* Owner-role additions: the platform-controlled self-onboarding gate. */
+const onboardee = '10000000-0000-0000-0000-000000000031',
+  secondSalon = '10000000-0000-0000-0000-000000000032';
+await db.exec(
+  `reset role;insert into auth.users(id) values('${onboardee}'),('${secondSalon}');
+   update auth.users set email = id::text || '@test.local';set role authenticated;`,
+);
+await as(onboardee);
+await check('self-onboarding stays available by default (platform-controlled flag seeded enabled)', async () => {
+  const s = await scalar('select public.create_my_salon($1)', ['Fresh self salon']);
+  assert.ok(s);
+});
+const setGate = async (sql) => {
+  await db.exec(`reset role;${sql}set role authenticated;`);
+};
+await setGate(`update public.feature_flags set platform_enabled=false where key='salon_self_onboarding';`);
+await as(secondSalon);
+await check('super admin can switch self-onboarding off centrally', () =>
+  denied('select public.create_my_salon($1)', ['Blocked salon']));
+await setGate(
+  `update public.feature_flags set lifecycle='disabled' where key='salon_self_onboarding';`,
+);
+await check('a disabled lifecycle fails closed too', () =>
+  denied('select public.create_my_salon($1)', ['Blocked salon 2']));
+await setGate(`update public.feature_flags set lifecycle='enabled', platform_enabled=true where key='salon_self_onboarding';`);
+const third = '10000000-0000-0000-0000-000000000033';
+await db.exec(`reset role;insert into auth.users(id) values('${third}');update auth.users set email = id::text || '@test.local';set role authenticated;`);
+await as(third);
+await check('restoring the flag re-enables self-onboarding', async () => {
+  const s = await scalar('select public.create_my_salon($1)', ['Restored salon']);
+  assert.ok(s);
+});
+await as(owner);
 
 await db.close();
 console.log(
