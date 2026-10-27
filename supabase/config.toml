@@ -1,0 +1,11 @@
+project_id = "dadhi-cuting"
+
+# Auth redirect configuration for the deployed SPA.
+# Declared here so `supabase config diff` / `config push` can apply exactly
+# these properties to the hosted project without touching anything else.
+[auth]
+site_url = "https://dadhi-cuting.netlify.app"
+additional_redirect_urls = [
+  "https://dadhi-cuting.netlify.app/*",
+  "http://localhost:4200/*",
+]

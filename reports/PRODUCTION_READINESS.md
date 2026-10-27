@@ -4,7 +4,7 @@ Date: 27 October 2026 (live salon-side pass complete). Branch `main` pushed to `
 
 ## Overall verdict: **Deployed and live-verified — platform chain (AAL2) + salon-side matrix (owner → staff → suspension/revocation → flags). Remaining: real-admin swap + Auth Site URL setting**
 
-The Super Admin system, ownership flows, employee account management, role/permission enforcement, and dynamic feature flags are implemented (**53/53** offline checks, 59/59 unit, 15 browser checks, build green), **applied to the live project** (migrations + Edge Functions ACTIVE), **platform chain verified live with a test Super Admin** (AAL2 achieved), **and the salon-side matrix verified live in real browsers (27 Oct)**: salon provisioning, owner invite accept, staff login creation through the Owner UI, suspension with verified server-side session revocation, restore + re-issue, and per-salon flag overrides. Only the real-admin swap and two dashboard settings remain (below).
+The Super Admin system, ownership flows, employee account management, role/permission enforcement, and dynamic feature flags are implemented (**53/53** offline checks, 59/59 unit, 15 browser checks, build green), **applied to the live project** (migrations + Edge Functions ACTIVE), **platform chain verified live with a test Super Admin** (AAL2 achieved), **and the salon-side matrix verified live in real browsers (27 Oct)**: salon provisioning, owner invite accept, staff login creation through the Owner UI, suspension with verified server-side session revocation, restore + re-issue, and per-salon flag overrides. The Auth redirect configuration is fixed and verified. Only the real-admin swap remains (below).
 
 ## 1. Go-live checklist (operator, in order)
 
@@ -55,7 +55,7 @@ The test Super Admin (`super-admin.test@dadhi-testing.test`) and its one-time te
 1. ~~Token-level revocation for suspended users~~ — **resolved and live-verified (27 Oct)**: suspension revokes sessions via admin password rotation (no per-userId GoTrue route exists; mechanism proof in `E2E_TEST_REPORT.md` §4b).
 2. Force-change of temporary staff passwords is UX-enforced, not native (documented; live-drive confirmed staff reach the dashboard with the temp password).
 3. Initial-bundle budget warning (595 kB vs 500 kB) — cosmetic, pre-existing trend.
-4. Supabase Auth **Site URL / Redirect URLs** still unset (invite links pointed at `localhost:3000`) — operator should set them to `https://dadhi-cuting.netlify.app` in the dashboard.
+4. ~~Supabase Auth **Site URL / Redirect URLs** still unset~~ — **resolved (27 Oct)**: `supabase/config.toml` now declares `auth.site_url = https://dadhi-cuting.netlify.app` plus dev/prod redirect patterns, pushed via `supabase config push`; verified end to end (recovery email link now redirects to the production origin, not localhost).
 5. Two accounts in one browser profile can replace each other's stored session (shared storage key) — device-profile separation recommended; documented as OPEN-05.
 
 ## 6. What "done" will mean after steps 4–6

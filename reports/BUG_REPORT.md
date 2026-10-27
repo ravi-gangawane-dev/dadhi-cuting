@@ -33,8 +33,8 @@ Date: 25 October 2026. Lists every defect found during this implementation cycle
 - **Root cause**: browsers preflight cross-origin calls; both Edge functions had no `OPTIONS` handling and no `Access-Control-Allow-Origin` on responses — the preflight 400'd and the real call was blocked before the function body ran (while Node/service-side probes always worked).
 - **Fix**: both functions now answer `OPTIONS` with `204` and reflect an allowlisted Origin (`https://dadhi-cuting.netlify.app` + localhost dev) on every response, including errors; redeployed and re-driven live — the Owner UI created the staff login end to end.
 
-### Owner-invite redirect mis-configuration (operator setting, not code)
-- The deployment invite email linked **`redirect_to=http://localhost:3000`** — the Supabase Auth **Site URL** is still unset. Live session delivery was completed by rewriting the fragment to the production origin, but the operator should set Auth → **Site URL** = `https://dadhi-cuting.netlify.app` (and add it to **Redirect URLs**) in the dashboard.
+### Owner-invite redirect mis-configuration (operator setting — RESOLVED 27 Oct)
+- The deployment invite email linked **`redirect_to=http://localhost:3000`** (Supabase Auth Site URL unset). **Resolved agent-side**: `supabase/config.toml` now declares `auth.site_url` + `additional_redirect_urls` (prod + localhost dev) and `supabase config push` applied them to the live project; a recovery email was driven end to end and its verify link now carries `redirect_to=https://dadhi-cuting.netlify.app`. The config file is committed so future environments stay reproducible.
 
 ## Fixed pre-existing (legacy) issues retained from reports
 
