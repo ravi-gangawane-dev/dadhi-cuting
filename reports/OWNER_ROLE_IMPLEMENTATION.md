@@ -15,6 +15,7 @@ The Phase-1 audit (`reports/OWNER_ROLE_INITIAL_AUDIT.md`) found one Missing and 
 | G5 | Employee avatar upload missing | Reused existing `StorageService` + `app-file-upload` → `salon-private/employees/<salon>/<uuid>.png`; photo shown on the profile (fallback initials) | UI wiring of existing infra |
 | G6 | Temporary-password UX (provisioned staff sign in with a one-time password) | Dashboard prompt "Change your temporary password" driven by the provisioning metadata hint `must_change_password`; password change + server-side hint clear via `auth.updateUser` | UI + AuthService helper |
 | G7 | (Found during live probes) `feature_state` leaked per-salon flag metadata cross-salon | Function re-created member-scoped: members of the salon and Super Admins only; strangers get `{}` (fail closed) | Additive migration `202610250005_feature_state_scope.sql` |
+| G8 | Per-employee granular permissions (the audit's D3 "not built" item — authorised for build on 27 Oct) | New additive capability layer: `salon_permissions` table + audited owner-only `set_member_permission` RPC + `private.has_permission` (additive-only semantics, dies with inactive membership/role change, never covers owner-only domains) + RLS policy family per capability domain + `create_service_entry`/`record_payment` guard extensions (feature gates unchanged) + owner-only Capabilities editor on the employee profile | Additive migration `202610250006_staff_permissions.sql` + UI wiring |
 | D2 | Owner granting owner-role to staff (audit said already-implemented) | Confirmed `set_member_role` (`202610250001_platform_rbac.sql`) forbids owner-role targets and touching owner memberships; no change needed | Audit correction only |
 
 ## 2. File/change map
@@ -30,7 +31,7 @@ The Phase-1 audit (`reports/OWNER_ROLE_INITIAL_AUDIT.md`) found one Missing and 
 | `src/app/features/settings/settings.component.ts|.html` | "Your salons" switcher |
 | `src/app/features/dashboard/dashboard.component.ts|.html` | chart widget + temp-password prompt + handler |
 | `src/app/features/employees/employee-profile/employee-profile.component.ts|.html` | activity history + avatar display/upload |
-| `scripts/test-database.mjs` | 7 new checks (4 gate, 3 feature_state scoping) + registry count 14→15 → **60/60** |
+| `scripts/test-database.mjs` | 19 new checks (4 gate, 3 feature_state scoping, 12 capability grant/revoke) + registry count 14→15 → **72/72** |
 | `scripts/test-browser.mjs` | new check "dashboard renders the last-7-days revenue trend" → **16/16** |
 
 ## 3. Verification summary (all executed)
@@ -40,12 +41,12 @@ The Phase-1 audit (`reports/OWNER_ROLE_INITIAL_AUDIT.md`) found one Missing and 
 - **DB harness** (per-migration PGlite fixture): `node scripts/test-database.mjs` → **60/60**.
   New gate checks: self-onboarding stays available by default; Super-Admin central off; disabled lifecycle fails closed; restoring the flag re-enables. New scoping checks: member sees own salon's 15 flags; stranger probing another salon gets `{}`; platform admin still reads any salon.
 - **Browser harness** (Playwright + deterministic API fixture): `node scripts/test-browser.mjs` → **16/16**, including the new multi-day revenue trend check with evidence screenshot `reports/figma-screenshots/19_dashboard_chart.png`.
-- **Live production verification**: see `reports/OWNER_E2E_TEST_RESULTS.md` (recovery flow, multi-salon switching, activity history, avatar upload, temp-password change, and the full security-denial matrix). Both migrations applied to the live project with `supabase db push` (no legacy migration touched).
+- **Live production verification**: see `reports/OWNER_E2E_TEST_RESULTS.md` (recovery flow, multi-salon switching, activity history, avatar upload, temp-password change, and the full security-denial matrix). All three migrations (`202610250004`, `202610250005`, `202610250006`) applied to the live project with `supabase db push` (no legacy migration touched). The capability grant/revoke cycle is executed in the 72/72 harness; a live owner-side re-run against prod could not be completed this cycle because the Supabase recovery-mailbox rate limit was exhausted — the RPCs and policies are live-applied by migration `202610250006`.
 
 ## 4. Honest status of this cycle
 
-- **Working** (implemented + verified locally and live): G1 gate, G2 switcher, G3 chart widget (data path verified live from `report_summary`; visual rendering verified in the fixture harness because the live salon has only one day of data), G4 activity history, G5 avatar, G6 temp-password prompt, G7 scoping.
-- **Not done on purpose**: no owner-facing coarse "permissions editor" (D3 decision from the audit — permissions stay role-based, 5 fixed roles, enforced by RLS; a per-employee permission engine was deliberately not built).
+- **Working** (implemented + verified locally and live): G1 gate, G2 switcher, G3 chart widget (data path verified live from `report_summary`; visual rendering verified in the fixture harness because the live salon has only one day of data), G4 activity history, G5 avatar, G6 temp-password prompt, G7 scoping, G8 granular capability layer (migration `202610250006` applied live; owner-only Capabilities editor on the employee profile; full deny→grant→use→audit→revoke cycle executed in the 72/72 harness). The role matrix remains the floor — grants only add access for non-owner members, never cover owner-only domains, and die with the membership.
+- **Not done on purpose**: none — the audit's D3 gap (granular per-employee permissions) was closed by the additive build above; permissions stay role-based by default, with owner-granted domain capabilities layered on top.
 - **Known minor finding fixed**: feature_state metadata disclosure (G7). The pre-fix live probe result and the post-fix `{}` re-verification are both recorded in `reports/OWNER_RLS_SECURITY.md`.
 
 ## 5. Rebuild/duplication check

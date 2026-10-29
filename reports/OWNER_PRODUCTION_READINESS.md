@@ -19,9 +19,9 @@ Date: 27 October 2026 · Verdict per module for the production deployment (`dadh
 
 ## 2. Pre-launch checklist (all ticked)
 
-- [x] Migrations applied to prod in order, additive only (`202610250004`, `202610250005` this cycle; earlier ones prior cycles)
-- [x] Harness green: DB 60/60 · Unit 60/60 · Browser 16/16
-- [x] Live E2E: 15 executed scenarios pass incl. 4 denial probes (`OWNER_E2E_TEST_RESULTS.md`)
+- [x] Migrations applied to prod in order, additive only (`202610250004`, `202610250005`, `202610250006` this cycle; earlier ones prior cycles)
+- [x] Harness green: DB 72/72 · Unit 60/60 · Browser 16/16
+- [x] Live E2E: 13 executed scenarios pass incl. 4 denial probes (`OWNER_E2E_TEST_RESULTS.md`); the new capability grant→use→revoke cycle executed in the 72/72 DB harness
 - [x] Figma design preserved (palette/header/nav untouched; mobile five-tab nav intact — screenshot evidence `reports/figma-screenshots/`)
 - [x] CORS restricted to prod + localhost; no wildcards
 - [x] No secrets/private data in the SPA bundle or reports
@@ -37,7 +37,7 @@ These do not block owner operations.
 
 ## 4. Final statement
 
-**All ten modules are Production Ready for the Salon Owner role.** The only open operational dependency is the Super-Admin mailbox handover, which is intentionally waiting on your authorization. No feature in the Owner-facing product is broken, fabricated, or left untested without disclosure.
+**Modules 1–9 are Production Ready for the Salon Owner role:** implemented, RLS/RPC-enforced, executed-verified (live probes plus the 72/72 DB harness), and honestly reported. **Module 10 (Super Admin portal & handover) is Production Ready in code but Blocked in operations:** portal, ops and platform audit work; the production mailbox handover to your real admin awaits your explicit authorization, and the test admin remains active until you direct otherwise. No feature in the Owner-facing product is broken, fabricated, or left untested without disclosure.
 
 ## 5. Final explicit status table (the required 10 modules)
 
@@ -53,7 +53,7 @@ Legend: **Working** = implemented + executed evidence · **Partially Working** =
 | 6 | Salon operations core (services, customers, invoices, payments & reconciliation) | **Working** | prior-cycle live evidence + 60/60 DB + 16/16 browser; reversal guard re-covered by harness |
 | 7 | Daily closing & reports (day lock, period aggregates) | **Working** | closing math + day-lock governance in harness; `report_summary` live |
 | 8 | Feature flag governance (registry, salon overrides, central setters) | **Working** | registry 15 flags live; overrides + flags audited; setters denied live to non-admins |
-| 9 | Permissions & role security (RLS matrix, no auto-promotion, owner-grant prohibition) | **Partially Working (by design)** | matrix enforced and probed; deliberately no per-employee granular-permission editor (audit decision D3) — role-based only |
-| 10 | Super Admin portal & handover (platform guard, ops, platform audit, admin bootstrap) | **Partially Working** | portal + ops + audit Working; production handover of the admin mailbox is **Blocked** on explicit user authorization (test admin still active) |
+| 9 | Permissions & role security (RLS matrix, no auto-promotion, owner-grant prohibition) | **Working** | role matrix enforced and probed live; granular per-staff capability editor added (`salon_permissions` + audited `set_member_permission`, migration `202610250006` applied live) and verified by the harness deny→grant→use→audit→revoke cycle |
+| 10 | Super Admin portal & handover (platform guard, ops, platform audit, admin bootstrap) | **Partially Working — handover Blocked** | portal, ops and platform audit Working; production mailbox handover (`npm run bootstrap:admin` with the real admin's mailbox) awaits your explicit authorization; test admin still active |
 
 Nothing is marked **Not Working** or **Not Tested**: every module's enforcement point was either live-probed or covered by an executed harness denial, and decisions D1–D3 are documented in `OWNER_ROLE_INITIAL_AUDIT.md` §5.
